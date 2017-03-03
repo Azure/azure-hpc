@@ -67,7 +67,7 @@ Keep note of the 'Application ID' that's output from the above command.
 
 The portal deployment is automated using the ARM template below which will create the Azure storage, batch and web application.
 
-Most of the parameters should be self explanatory and defaults shouldn't need to be changed.  Details on Azure Web App instance sizes and pricing can be wound [here](https://azure.microsoft.com/en-au/pricing/details/app-service/).
+Most of the parameters should be self explanatory and defaults shouldn't need to be changed.  Details on Azure Web App instance sizes and pricing can be found [here](https://azure.microsoft.com/en-au/pricing/details/app-service/).
 
 The deployment will ask for the following information
 

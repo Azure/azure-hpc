@@ -305,6 +305,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\NewPoolModel.cs" />
     <Compile Include="Models\NewSearchModel.cs" />
     <Compile Include="Models\PoolSpec.cs" />
     <Compile Include="Models\RespositoryViewModel.cs" />

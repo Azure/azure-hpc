@@ -1,4 +1,5 @@
-﻿@{
+﻿@model Microsoft.Azure.Blast.Web.Models.NewPoolModel
+@{
     ViewBag.Title = "New Pool";
 }
 
@@ -35,12 +36,14 @@
                 <div class="col-sm-10">
                     <div class="dropdown">
                         <button id="vmSizeBtn" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                            Standard_D14_v2
+                            @Model.VirtualMachineSizes.FirstOrDefault()
                             <span class="caret"></span>
                         </button>
                         <ul id="vmSizeList" class="dropdown-menu" aria-labelledby="vmSizeBtn">
-                            <li><a href="javascript:void(0)">Standard_D14_v2</a></li>
-                            <li><a href="javascript:void(0)">Standard_D5_v2</a></li>
+                            @foreach (var virtualMachineSize in Model.VirtualMachineSizes)
+                            {
+                                <li><a href="javascript:void(0)">@virtualMachineSize</a></li>
+                            }
                         </ul>
                     </div>
                 </div>
