@@ -82,6 +82,6 @@ The deployment will ask for the following information
 * AAD Instance - AAD Login URL, you shouldn't need to change this
 * AAD Application (client) ID - The AAD application ID from above
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsmith1511%2FAzureBlast%2Fmaster%2FTemplates%2Fazuredeploy.json" target="_blank"><img alt="Deploy to Azure" src="http://azuredeploy.net/deploybutton.png"/></a>
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-hpc%2Fmaster%2FLifeScience%2FAzureBlast%2FTemplates%2Fazuredeploy.json" target="_blank"><img alt="Deploy to Azure" src="http://azuredeploy.net/deploybutton.png"/></a>
 
 Once the web site is deployed you can navigate to https://myblastportal.azurewebsites.net to login.
