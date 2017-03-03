@@ -18,7 +18,7 @@ See the NCBI BLAST+ [home page](http://blast.ncbi.nlm.nih.gov/Blast.cgi) for mor
 
 ## Create a AAD application
 
-You'll need to start by creating an AAD application via the Azure Portal or the Azure Xplat CLI.
+You'll need to start by creating a AAD application via the Azure Portal or the Azure Xplat CLI.
 
 The first thing you'll need to do is decide on an available web site DNS name in the form of mywebsitename.azurewebsites.net.  For this example we'll use a site name of 'MyBlastPortal', i.e. myblastportal.azurewebsites.net.
 
@@ -82,6 +82,6 @@ The deployment will ask for the following information
 * AAD Instance - AAD Login URL, you shouldn't need to change this
 * AAD Application (client) ID - The AAD application ID from above
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-hpc%2Fmaster%2FLifeScience%2FAzureBlast%2FTemplates%2Fazuredeploy.json" target="_blank"><img alt="Deploy to Azure" src="http://azuredeploy.net/deploybutton.png"/></a>
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-hpc%2Fmaster%2FLifeSciences%2FAzureBlast%2FTemplates%2Fazuredeploy.json" target="_blank"><img alt="Deploy to Azure" src="http://azuredeploy.net/deploybutton.png"/></a>
 
 Once the web site is deployed you can navigate to https://myblastportal.azurewebsites.net to login.
