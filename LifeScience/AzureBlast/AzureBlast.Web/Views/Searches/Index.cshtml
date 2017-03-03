@@ -1,0 +1,79 @@
+﻿@{
+    ViewBag.Title = "Searches";
+}
+
+<p>&nbsp;</p>
+
+<a href="/Searches/New" class="btn btn-info" role="button">Start a Search</a>
+<p>&nbsp;</p>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Searches</h3>
+    </div>
+    <div class="panel-body">
+        <table class="table table-striped" id="querytbl">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Database</th>
+                <th>Queries</th>
+                <th>State</th>
+                <th>StartTime</th>
+                <th>EndTime</th>
+                <th>Duration</th>
+            </tr>
+            </thead>
+            <tbody id="querytblbody"></tbody>
+        </table>
+        <progress></progress>
+    </div>
+</div>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+    @section scripts
+{
+        <script>
+            $(function () {
+                $.get('/api/searches', null, function (data) {
+                    $('progress').hide();
+
+                    $.map(data, function (query) {
+
+                        var queryLink = "<a href=\"/Searches/Show/" + query.id + "\">" + query.name + "</a>";
+                        var tr = "<tr>\
+                                <td>\
+                                    " + queryLink + "\
+                                </td>\
+                                <td> \
+                                    " + query.databaseId + "\
+                                </td>\
+                                <td> \
+                                    " + query.totalTasks + "\
+                                </td>\
+                                <td> \
+                                    " + query._State + "\
+                                </td>\
+                                <td> \
+                                    " + formatDate(new Date(query.startTime)) + "\
+                                </td>\
+                                <td> \
+                                    " + formatDate(new Date(query.endTime)) + "\
+                                </td>\
+                                <td> \
+                                    " + query.duration + "\
+                                </td>\
+                            </tr>;";
+
+                        $('#querytblbody').append(tr);
+                    });
+
+                }).error(function (data) {
+                    alert('Error getting data: ' + data.responseText);
+                    console.log(data);
+                });
+            });
+        </script>
+    }

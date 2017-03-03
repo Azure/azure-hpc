@@ -1,0 +1,134 @@
+﻿
+@model Microsoft.Azure.Blast.Web.Models.RespositoryViewModel
+
+@{
+    ViewBag.Title = "Databases";
+}
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+<div class="alert alert-success alert-dismissable hide">
+    <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+</div>
+
+<ul class="nav nav-tabs">
+    @foreach (var repo in Model.Repositories)
+    {
+        <li class="@(Model.SelectedRepoId == repo.Id ? "active" : "")">
+            <a href="#@(repo.Id)" data-toggle="tab" >@repo.Name</a>
+        </li>
+    }
+</ul>
+
+<div class="tab-content ">
+
+    @foreach (var repo in Model.Repositories)
+    {
+        <div class="tab-pane @(Model.SelectedRepoId == repo.Id ? "active" : "")" id="@(repo.Id)">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 id="header-@(repo.Id)" class="panel-title">Source - <a href="@(repo.Uri)" target="_blank">@(repo.Uri)</a></h4>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-striped" id="databasetbl">
+                        <thead>
+                        <tr>
+                            <th>Database</th>
+                            <th>Number Files</th>
+                            <th>Total Size</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="databasetblbody-@(repo.Id)"></tbody>
+                    </table>
+                </div>
+                <progress id="progress-@(repo.Id)"></progress>
+            </div>
+        </div>
+    }
+</div>
+
+
+@section scripts
+{
+    <script>
+        function importDatabase(repoId, databaseId) {
+            $('#databasetblbody-' + repoId).empty();
+            $('#progress-' + repoId).show();
+            var requestData = JSON.stringify({ "repositoryId": repoId, "databaseId": databaseId });
+            $.ajax({
+                type: 'POST',
+                url: '/api/repositories/' + repoId + '/databases/' + databaseId + '/import',
+                data: requestData,
+                databaseId: databaseId,
+                repositoryId: repoId,
+                success: function () { importSuccess(this.repositoryId, this.databaseId) },
+                error: function () { importSuccess(this.repositoryId, this.databaseId) },
+                contentType: "application/json",
+                dataType: 'json'
+            });
+        }
+
+        function showAlert(message) {
+            $('.alert').text(message);
+            $('.alert').show();
+        }
+
+        function importSuccess(repositoryId, databaseId) {
+            showAlert('Importing database ' + databaseId);
+            loadRepository(repositoryId);
+        }
+
+        function loadRepository(repoId) {
+            // empty table first
+            $('#databasetblbody-' + repoId).empty();
+
+            // Show progress, just in case it isn't
+            $('#progress-' + repoId).show();
+
+            // Fetch repo databases
+            $.get('/api/repositories/' + repoId + '/databases', null, function (data) {
+
+                $('#progress-' + repoId).hide();
+
+                $.map(data, function (db) {
+
+                    var disabledClass = db.importInProgress ? 'disabled' : '';
+                    var importLink = '<button class="btn btn-info btn-xs ' + disabledClass + '" onclick="importDatabase(\'' + repoId + '\', \'' + db.name + '\')">import</button>';
+
+                    var tr = "<tr>\
+                    <td>\
+                        " + db.name + "\
+                    </td>\
+                    <td> \
+                        " + db.fileCount + "\
+                    </td>\
+                    <td>\
+                        " + db.friendlySize + "\
+                    </td>\
+                    <td>\
+                        " + importLink + "\
+                    </td>\
+                    </tr>";
+
+                    $('#databasetblbody-' + repoId).append(tr);
+                });
+
+            }).error(function (data) {
+                alert('Error getting data for repo: ' + data.responseText);
+                console.log(data);
+            });
+        }
+
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            var target = $(e.target).attr("href"); // activated tab
+            var repoId = target.replace("#", "");
+            loadRepository(repoId);
+        });
+
+        $(function () {
+            loadRepository('@(Model.SelectedRepoId)');
+        });
+    </script>
+}

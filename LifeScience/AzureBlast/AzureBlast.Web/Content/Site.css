@@ -1,0 +1,48 @@
+﻿body {
+    padding-top: 50px;
+    padding-bottom: 20px;
+}
+
+/* Set padding to keep content from hitting the edges */
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Set width on the form input elements since they're 100% wide by default */
+input,
+select {
+    width: 300px;
+}
+
+#async-spinner {
+    z-index: 100;
+    display: none;
+    position: absolute;
+    padding-top: 25px;
+    padding-left: 100px;
+}
+
+#search-spinner {
+    display: none;
+    margin-left: 10px;
+}
+
+#async-spinner.spinning, #search-spinner.spinning {
+    display: inline-block;
+}
+
+#dynamicArea {
+    z-index: 1;
+    display: inline-block;
+    opacity: 1;
+}
+
+#dynamicArea.loading {
+    opacity: .25;
+}
+
+progress {
+    margin: 15px;
+}
+

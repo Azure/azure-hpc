@@ -1,0 +1,128 @@
+﻿@model Microsoft.Azure.Blast.Web.Models.VisualizeResultsModel
+@{
+    ViewBag.Title = "Visualize Results - " + @Model.SearchName;
+}
+
+<p>&nbsp;</p>
+
+<ol class="breadcrumb">
+    <li><a href="/Searches">Searches</a></li>
+    <li><a href="/Searches/Show/@Model.Id">@Model.SearchName</a></li>
+    <li class="active">@Model.Filename</li>
+</ol>
+
+<div class="panel panel-default">
+    <div class="panel-heading">@Model.SearchName query @Model.QueryId results</div>
+    <div class="panel-body">
+
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.QueryId)
+        @Html.HiddenFor(model => model.Filename)
+
+        <div id="errors"></div>
+
+        <div id="curtain">
+            <div class="message">Loading BLAST results ...</div>
+        </div>
+
+        <div class="container-fluid" id="results-container">
+            <div class="container">
+                <div class="row" id="introduction">
+                    <div class="col-sm-8 col-sm-push-2">
+                        <h2>Visualizing your BLAST results</h2>
+                        <div>
+                            <img src="~/Areas/Kablammo/Content/img/example_results.svg" alt="Example results" id="example-results">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="snippets">
+            <div class="alignment" id="example-alignment">
+                <h5 class="alignment-name">Pants</h5>
+                <pre class="alignment-seqs"><div class="query-seq"></div><div class="midline-seq"></div><div class="subject-seq"></div></pre>
+            </div>
+            <div class="query-header row" id="example-query-header">
+                <div class="query-index">Query 1 of 4</div>
+                <div class="query-name">tgme49_asmbl.111 | organism=Toxoplasma_gondii_ME49 | version=2012-07-08 | length=6619 | SO=supercontig</div>
+            </div>
+            <div class="subject-header row" id="example-subject-header">
+                <div class="subject-index">Subject 1 of 4</div>
+                <div class="subject-name">tgme49_asmbl.111 | organism=Toxoplasma_gondii_ME49 | version=2012-07-08 | length=6619 | SO=supercontig</div>
+            </div>
+            <div class="row subject" id="example-subject-result">
+                <div class="subject-plot col-md-6">
+                    <!-- SVG inserted here via prepend(). -->
+                </div>
+                <div class="subject-info col-md-3">
+                    <p class="selected-count"></p>
+                    <ul class="subject-params">
+                        <li><span>Subject ID:</span> Pants</li>
+                        <li><span>Bit score:</span> Pants</li>
+                        <li><span>E value:</span> Pants</li>
+                        <li><span>Query coords:</span> Pants and socks</li>
+                        <li><span>Subject coords:</span> Pants</li>
+                        <li><span>Alignment length:</span> Pants</li>
+                    </ul>
+                </div>
+                <div class="btn-group-vertical subject-buttons col-md-3">
+                    <div class="btn-group">
+                        <button type="button" class="export-image btn btn-default dropdown-toggle" data-toggle="dropdown">
+                            Export image
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a href="#" class="export-to-svg">Export to SVG</a></li>
+                            <li><a href="#" class="export-to-png">Export to PNG</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <div class="hsp-selection-controls">
+                            <button type="button" class="btn btn-default view-alignment">View alignments</button>
+                            <button type="button" class="btn btn-default export-alignment">Export alignments</button>
+                            <button type="button" class="btn btn-default deselect-all-hsps">Deselect all alignments</button>
+                            <div class="checkbox">
+                                <label>
+                                    <input class="toggle-hsp-outline" type="checkbox" value="" checked="checked">
+                                    Outline selected alignments
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="alignment-viewer" tabindex="-1" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                <div class="modal-title">
+                                    <h5><strong>Subject:</strong> <span class="subject-title"></span></h5>
+                                    <h5><strong>Query:</strong> <span class="query-title"></span></h5>
+                                </div>
+                            </div>
+                            <div class="modal-body alignments">
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-default export-alignments" type="button">Export alignments</button>
+                                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="example-error" class="alert alert-danger fade in">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Error</h4>
+                <p class="message">This is an example error.</p>
+            </div>
+        </div>
+
+        <canvas id="png-exporter"></canvas>
+        <p>&nbsp;</p>
+    </div>
+</div>
+
+<p>Visualizations thanks to <a href="http://kablammo.wasmuthlab.org/">Kablammo</a></p>
+
+<p>&nbsp;</p>

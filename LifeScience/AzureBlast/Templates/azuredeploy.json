@@ -1,0 +1,220 @@
+{
+   "$schema":"http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+   "contentVersion":"1.0.0.0",
+   "parameters":{
+      "siteName":{
+         "type":"string",
+         "metadata":{
+            "description":"The name of the web app that you wish to create."
+         }
+      },
+      "hostingPlanName":{
+         "type":"string",
+         "defaultValue":"blasthostingplan",
+         "metadata":{
+            "description":"The name of the App Service plan to use for hosting the web app, default should be fine"
+         }
+      },
+      "skuTier":{
+         "type":"string",
+         "allowedValues":[
+            "Free",
+            "Shared",
+            "Basic",
+            "Standard"
+         ],
+         "defaultValue":"Free",
+         "metadata":{
+            "description":"The pricing tier for the hosting plan."
+         }
+      },
+      "skuSize":{
+         "type":"string",
+         "allowedValues":[
+            "F1",
+            "D1",
+            "B1",
+            "B2",
+            "B3",
+            "S1",
+            "S2",
+            "S3",
+            "P1",
+            "P2",
+            "P3"
+         ],
+         "defaultValue":"F1",
+         "metadata":{
+            "description":"The instance size of the hosting plan (small, medium, or large)."
+         }
+      },
+      "workerSize":{
+         "type":"string",
+         "allowedValues":[
+            "0",
+            "1",
+            "2"
+         ],
+         "defaultValue":"0",
+         "metadata":{
+            "description":"The instance size of the hosting plan (small, medium, or large)."
+         }
+      },
+      "numberOfWorkers":{
+         "type":"string",
+         "allowedValues":[
+            "1",
+            "2",
+            "3"
+         ],
+         "defaultValue":"1",
+         "metadata":{
+            "description":"The number of workers."
+         }
+      },
+      "repoURL":{
+         "type":"string",
+         "defaultValue":"https://github.com/smith1511/AzureBlast.git",
+         "metadata":{
+            "description":"The URL for the GitHub repository that contains the project to deploy."
+         }
+      },
+      "branch":{
+         "type":"string",
+         "defaultValue":"master",
+         "metadata":{
+            "description":"The branch of the GitHub repository to use."
+         }
+      },
+      "aadTenant":{
+         "type":"string",
+         "metadata":{
+            "description":"The AAD tenants to use, e.g. 'johndoe.onmicrosoft.com'"
+         }
+      },
+      "aadInstance":{
+         "type":"string",
+         "defaultValue":"https://login.microsoftonline.com/{0}",
+         "metadata":{
+            "description":"The AAD logon instance to use, usually https://login.microsoftonline.com/{0}"
+         }
+      },
+      "aadApplicationClientId":{
+         "type":"string",
+         "metadata":{
+            "description":"The AAD application client Id."
+         }
+      }
+   },
+   "variables":{
+      "webSitesApiVersion":"2015-08-01",
+      "storageApiVersion":"2015-06-15",
+      "batchApiVersion":"2015-12-01",
+      "storageAccountName":"[concat(uniqueString(resourceGroup().id), 'sa')]",
+      "storageAccountType":"Standard_LRS",
+      "batchAccountName":"[concat(uniqueString(resourceGroup().id), 'ba')]"
+   },
+   "resources":[
+      {
+         "type":"Microsoft.Storage/storageAccounts",
+         "name":"[variables('storageAccountName')]",
+         "apiVersion":"[variables('storageApiVersion')]",
+         "location":"[resourceGroup().location]",
+         "properties":{
+            "accountType":"[variables('storageAccountType')]"
+         }
+      },
+      {
+         "type":"Microsoft.Batch/batchAccounts",
+         "name":"[variables('batchAccountName')]",
+         "apiVersion":"[variables('batchApiVersion')]",
+         "location":"[resourceGroup().location]"
+      },
+      {
+         "apiVersion":"[variables('webSitesApiVersion')]",
+         "name":"[parameters('hostingPlanName')]",
+         "type":"Microsoft.Web/serverfarms",
+         "location":"[resourceGroup().location]",
+         "properties":{
+            "name":"[parameters('hostingPlanName')]",
+            "workerSize":"[parameters('workerSize')]",
+            "numberOfWorkers":"[parameters('numberOfWorkers')]"
+         },
+         "sku": {
+            "name": "[parameters('skuSize')]",
+            "tier": "[parameters('skuTier')]",
+            "size": "[parameters('skuSize')]"
+         }
+      },
+      {
+         "apiVersion":"[variables('webSitesApiVersion')]",
+         "name":"[parameters('siteName')]",
+         "type":"Microsoft.Web/sites",
+         "location":"[resourceGroup().location]",
+         "dependsOn":[
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Batch/batchAccounts', variables('batchAccountName'))]",
+            "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]"
+         ],
+         "properties":{
+            "serverFarmId":"[parameters('hostingPlanName')]",
+            "siteConfig":{
+               "phpVersion":"off",
+               "appSettings":[
+                  {
+                     "Name":"storage.account",
+                     "Value":"[variables('storageAccountName')]"
+                  },
+                  {
+                     "Name":"storage.key",
+                     "Value":"[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), variables('storageApiVersion')).key1]"
+                  },
+                  {
+                     "Name":"batch.url",
+                     "Value":"[concat('https://',reference(concat('Microsoft.Batch/batchAccounts/', variables('batchAccountName'))).accountEndpoint)]"
+                  },
+                  {
+                     "Name":"batch.account",
+                     "Value":"[variables('batchAccountName')]"
+                  },
+                  {
+                     "Name":"batch.key",
+                     "Value":"[listKeys(resourceId('Microsoft.Batch/batchAccounts', variables('batchAccountName')), variables('batchApiVersion')).primary]"
+                  },
+                  {
+                     "Name":"ida:Tenant",
+                     "Value":"[parameters('aadTenant')]"
+                  },
+                  {
+                     "Name":"ida:AADInstance",
+                     "Value":"[parameters('aadInstance')]"
+                  },
+                  {
+                     "Name":"ida:ClientId",
+                     "Value":"[parameters('aadApplicationClientId')]"
+                  },
+                  {
+                     "Name":"ida:PostLogoutRedirectUri",
+                     "Value":"[concat(parameters('siteName'),'.azurewebsites.net')]"
+                  }
+               ]
+            }
+         },
+         "resources":[
+            {
+               "apiVersion":"[variables('webSitesApiVersion')]",
+               "name":"web",
+               "type":"sourcecontrols",
+               "dependsOn":[
+                  "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]"
+               ],
+               "properties":{
+                  "RepoUrl":"[parameters('repoURL')]",
+                  "branch":"[parameters('branch')]",
+                  "IsManualIntegration":true
+               }
+            }
+         ]
+      }
+   ]
+}

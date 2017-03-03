@@ -1,0 +1,106 @@
+﻿@{
+    ViewBag.Title = "Pools";
+}
+
+<p>&nbsp;</p>
+
+<a href="/Pool/New" class="btn btn-info" role="button">Create a Pool</a>
+
+<p>&nbsp;</p>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Pools</h3>
+    </div>
+    <div class="panel-body">
+        <table class="table table-striped" id="databasetbl">
+            <thead>
+            <tr>
+                <th>Id</th>
+                <th>DisplayName</th>
+                <th>State</th>
+                <th>Allocation State</th>
+                <th>VM Size</th>
+                <th>Current Node Count</th>
+                <th>Target Node Count</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="pooltblbody"></tbody>
+        </table>
+    </div>
+    <progress></progress>
+</div>
+
+<p>&nbsp;</p>
+
+@section scripts
+{
+    <script>
+        $(function () {
+
+            $('#pooltblbody').on('click', 'tr td a', function () {
+                if (confirm("Are you sure you want to delete the pool: " + $(this).attr('id') + "?")) {
+                    $.ajax({
+                        type: 'DELETE',
+                        url: '/api/pools/' + $(this).attr('id'),
+                        contentType: false,
+                        processData: false,
+                        success: function (response) {
+                            window.location.href = "/Pool";
+                        },
+                        error: function (data) {
+                            $('#btnCreatePool').removeClass("disabled");
+                            console.log(data);
+                        }
+                    });
+                }
+            });
+            
+            $.get('/api/pools', null, function(pools) {
+                $('progress').hide();
+
+                $.map(pools, function (pool) {
+
+                    var displayName = pool.displayName === null ? "" : pool.displayName;
+
+                    var disabledClass = pool.state === "deleting" ? "disabled" : "";
+
+                    var tr = "<tr>\
+                                <td>\
+                                    " + pool.id + "\
+                                </td>\
+                                <td> \
+                                    " + displayName + "\
+                                </td>\
+                                <td> \
+                                    " + pool.state + "\
+                                </td>\
+                                <td> \
+                                    " + pool.allocationState + "\
+                                </td>\
+                                <td> \
+                                    " + pool.virtualMachineSize + "\
+                                </td>\
+                                <td> \
+                                    " + pool.currentDedicated + "\
+                                </td>\
+                                <td> \
+                                    " + pool.targetDedicated + "\
+                                </td>\
+                                <td><a id=" + pool.id + " href=\"#\" role=\"button\" class=\"btn btn-danger btn-xs " + disabledClass + "\"> \
+                                    Delete\
+                                </a></td>\
+                            </tr>;";
+
+                    $('#pooltblbody').append(tr);
+                });
+
+            }).error(function(data) {
+                alert('Error getting data: ' + data.responseText);
+                console.log(data);
+            });
+        });
+    </script>
+
+}

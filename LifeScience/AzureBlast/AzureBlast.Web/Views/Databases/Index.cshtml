@@ -1,0 +1,118 @@
+﻿@{
+    ViewBag.Title = "Databases";
+}
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Imported Databases</h3>
+    </div>
+    <div class="panel-body">
+        <div class="alert alert-warning"></div>
+        <table class="table table-striped" id="databasetbl">
+            <thead>
+                <tr>
+                    <th>Database</th>
+                    <th>Type</th>
+                    <th>Number Files</th>
+                    <th>Total Size</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="databasetblbody"></tbody>
+        </table>
+    </div>
+    <progress id="progress"></progress>
+</div>
+
+
+@section scripts
+{
+    <script>
+        function showAlert(message) {
+            $('.alert').text(message);
+            $('.alert').show();
+        }
+
+        function hideAlert() {
+            $('.alert').text('');
+            $('.alert').hide();
+        }
+
+        function loadDatabases() {
+            // empty table first
+            $('#databasetblbody').empty();
+
+            // Show progress, just in case it isn't
+            $('#progress').show();
+
+            // Fetch databases
+            $.get('/api/databases', null, function (data) {
+
+                $('#progress').hide();
+
+                $.map(data, function (db) {
+
+                    var tr = "<tr>\
+                    <td>\
+                        " + db.name + "\
+                    </td>\
+                    <td>\
+                        " + db._Type + "\
+                    </td>\
+                    <td> \
+                        " + db.fileCount + "\
+                    </td>\
+                    <td>\
+                        " + db.friendlySize + "\
+                    </td>\
+                    <td> \
+                        " + db.friendlyStatus + "\
+                    </td>\
+                    <td>\
+                        <a id=" + db.name + " href=\"#\" role=\"button\" class=\"btn btn-danger btn-xs\">Delete</a>\
+                    </td>\
+                    </tr>";
+
+                    $('#databasetblbody').append(tr);
+                });
+
+                if (data.length === 0) {
+                    showAlert('You have no imported databases.  Please import at least one database to get started.');
+
+                } else {
+                    hideAlert();
+                }
+
+            }).error(function (data) {
+                alert('Error getting data for databases: ' + data.responseText);
+                console.log(data);
+            });
+        }
+
+        $(function () {
+
+            $('#databasetblbody').on('click', 'tr td a', function () {
+                if (confirm("Are you sure you want to delete the database: " + $(this).attr('id') + "?")) {
+                    $.ajax({
+                        type: 'DELETE',
+                        url: '/api/databases/' + $(this).attr('id'),
+                        contentType: false,
+                        processData: false,
+                        success: function (response) {
+                            window.location.href = "/Databases";
+                        },
+                        error: function (data) {
+                            $('#btnCreatePool').removeClass("disabled");
+                            console.log(data);
+                        }
+                    });
+                }
+            });
+
+            loadDatabases();
+        });
+    </script>
+}

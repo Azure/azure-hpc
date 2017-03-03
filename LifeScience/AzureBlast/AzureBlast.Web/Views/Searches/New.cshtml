@@ -1,0 +1,309 @@
+﻿@model Microsoft.Azure.Blast.Web.Models.NewSearchModel
+@{
+    ViewBag.Title = "New Search";
+}
+
+<p>&nbsp;</p>
+
+<ol class="breadcrumb">
+    <li><a href="/Searches">Searches</a></li>
+    <li class="active">New Search</li>
+</ol>
+
+<form class="form-horizontal" role="form" enctype="multipart/form-data">
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">New Search Parameters</h3>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="searchName">Search name</label>
+                <div class="col-sm-10">
+                    <input id="searchName" type="text" class="form-control" placeholder="Search name..." aria-describedby="basic-addon1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="ddlDatabase">Database</label>
+                <div class="col-sm-10">
+                    <div class="dropdown">
+                        <button id="databaseBtn" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            Databases
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="databaseList" class="dropdown-menu" aria-labelledby="databaseBtn"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="searchSequenceText">Search sequence</label>
+                <div class="col-sm-10">
+                    <textarea id="searchSequenceText" class="form-control" name="searchSequenceText" cols="100" rows="6" placeholder="Enter accession number(s), gi(s), or FASTA sequence(s)"></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="orDivider"></label>
+                <div class="col-sm-10">
+                    <p id="orDivider" class="form-control-static">-- or --</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="searchFile">Sequence file(s)</label>
+                <div class="col-sm-10">
+                    <input id="searchFile" name="searchFile" type="file" multiple="multiple" accept="*" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">BLAST Parameters</h3>
+        </div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="ddlExecutable">Executable</label>
+                <div class="col-sm-10">
+                    <div class="dropdown">
+                        <button id="executableBtn" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            @Model.BlastExecutables.FirstOrDefault()
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="executableList" class="dropdown-menu" aria-labelledby="executableBtn">
+                            @foreach (var executable in Model.BlastExecutables)
+                            {
+                                <li><a href="javascript:void(0)">@executable</a></li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="executableArguments">Arguments</label>
+                <div class="col-sm-10">
+                    <input id="executableArguments" type="text" class="form-control" placeholder="e.g. -evalue 8 -outfmt 10" aria-describedby="basic-addon1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">Pool Parameters</h3>
+        </div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="poolListBtn">Existing Pool</label>
+                <div class="col-sm-10">
+                    <div class="dropdown">
+                        <button id="poolListBtn" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            Pools
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="poolList" class="dropdown-menu" aria-labelledby="poolListBtn"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="orDivider"></label>
+                <div class="col-sm-10">
+                    <p id="orDivider" class="form-control-static">-- or new pool --</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="poolName">Pool Name</label>
+                <div class="col-sm-10">
+                    <input id="poolName" type="text" class="form-control" placeholder="e.g. blast pool" aria-describedby="basic-addon1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="vmSizeListBtn">Virtual Machine Size</label>
+                <div class="col-sm-10">
+                    <div class="dropdown">
+                        <button id="vmSizeListBtn" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            @Model.VirtualMachineSizes.FirstOrDefault()
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="vmSizeList" class="dropdown-menu" aria-labelledby="vmSizeBtn">
+                            @foreach (var virtualMachineSize in Model.VirtualMachineSizes)
+                            {
+                                <li><a href="javascript:void(0)">@virtualMachineSize</a></li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="vmCount">Virtual Machine Count</label>
+                <div class="col-sm-10">
+                    <input id="vmCount" type="text" class="form-control" placeholder="e.g. 2" aria-describedby="basic-addon1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-sm-offset-0 col-sm-10">
+            <button id="btnSearch" type="submit" class="btn btn-success">Submit Search</button>
+        </div>
+        <progress style="display: none"></progress>
+    </div>
+</form>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+@section scripts
+{
+    <script>
+        $(function () {
+            $('progress').hide();
+
+            $("#databaseBtn").html('Loading databases... <span class="caret"></span>');
+
+            $('#vmSizeList').on('click', 'li a', function () {
+                $("#vmSizeListBtn").html($(this).text() + ' <span class="caret"></span>');
+            });
+
+            $('#databaseList').on('click', 'li a', function () {
+                $("#databaseBtn").html($(this).text() + ' <span class="caret"></span>');
+            });
+
+            $('#poolList').on('click', 'li a', function () {
+                $("#poolListBtn").html($(this).text() + ' <span class="caret"></span>');
+            });
+
+            $('#executableList').on('click', 'li a', function () {
+                $("#executableBtn").html($(this).text() + ' <span class="caret"></span>');
+            });
+
+            $.get('/api/databases', null, function (data) {
+
+                var listItems = $.map(data, function (db) {
+                    var html = '<li><a href="javascript:void(0)">';
+                    html += db.name;
+                    html += '</a></li>';
+                    return html;
+                });
+
+                $('#databaseList').append(listItems);
+                $("#databaseBtn").html('Select a database <span class="caret"></span>');
+
+            }).error(function (data) {
+                alert('Error getting databases: ' + data.responseText);
+                console.log(data);
+            });
+
+            $.get('/api/pools', null, function (data) {
+
+                var listItems = $.map(data, function (pool) {
+                    var html = '<li><a href="javascript:void(0)">';
+                    html += pool.id;
+                    html += '</a></li>';
+                    return html;
+                });
+
+                $('#poolList').append(listItems);
+                $("#poolListBtn").html('Select a pool <span class="caret"></span>');
+
+            }).error(function (data) {
+                alert('Error getting pools: ' + data.responseText);
+                console.log(data);
+            });
+
+            $("form").submit(function (e) {
+                // stop the form from posting
+                e.preventDefault();
+            });
+
+            // intercept button click and post the form data to the API
+            $("#btnSearch").click(function() {
+                var database = $('#databaseBtn').text().trim();
+                var executable = $('#executableBtn').text().trim();
+                var executableArgs = $('#executableArguments').val().trim();
+
+                var searchName = $('#searchName').val().trim();
+                var searchSequenceText = $('#searchSequenceText').val().trim();
+
+                var poolId = $('#poolListBtn').text().trim();
+                var vmSize = $('#vmSizeListBtn').text().trim();
+                var vmCount = $('#vmCount').val().trim();
+                var poolName = $('#poolName').val().trim();
+
+                var formData = new FormData();
+                var searchFile = $("#searchFile")[0];
+                formData.append("searchName", searchName);
+                formData.append("searchSequenceText", searchSequenceText);
+                formData.append("databaseName", database);
+                formData.append("executable", executable);
+                formData.append("executableArgs", executableArgs);
+
+                if (poolId !== null && poolId !== "" && poolId !== "Select a pool") {
+                    formData.append("poolId", poolId);
+                } else {
+                    formData.append("poolName", poolName);
+                    formData.append("targetDedicated", vmCount);
+                    formData.append("virtualMachineSize", vmSize);
+                }
+
+                // append all selected files
+                $.each(searchFile.files, function (i, file) {
+                    formData.append("file-" + i, file);
+                });
+
+                if (database === "" || database === undefined) {
+                    alert("please select a database to search");
+                }
+                else {
+                    $('#search-spinner').addClass("spinning");
+                    $('#btnSearch').addClass("disabled");
+                    $('progress').show();
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '/api/searches',
+                        contentType: false,
+                        processData: false,
+                        dataType: 'json',
+                        xhr: function () {  // Custom XMLHttpRequest
+                            var myXhr = $.ajaxSettings.xhr();
+                            if (myXhr.upload) { // Check if upload property exists
+                                myXhr.upload.addEventListener('progress', progressHandlingFunction, false); // For handling the progress of the upload
+                            }
+                            return myXhr;
+                        },
+                        data: formData,
+                        success: function(response) {
+                            $('#result').text(JSON.stringify(response));
+                            $('progress').hide();
+                            window.location.href = "/Searches/Show/" + response.replace("\"", "");
+                        },
+                        error: function(data) {
+                            $('progress').hide();
+                            $('#btnSearch').removeClass("disabled");
+                            console.log(data);
+                        }
+                    });
+                }
+            });
+
+            function progressHandlingFunction(e) {
+                if (e.lengthComputable) {
+                    $('progress').attr({ value: e.loaded, max: e.total });
+                }
+            }
+        });
+    </script>
+
+}
