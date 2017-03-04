@@ -41,6 +41,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 poolSpec.VirtualMachineSize,
                 _configuration.GetVirtualMachineConfiguration(),
                 poolSpec.TargetDedicated);
+            pool.MaxTasksPerComputeNode = _configuration.GetCoresForVirtualMachineSize(poolSpec.VirtualMachineSize);
             pool.Commit();
         }
 
