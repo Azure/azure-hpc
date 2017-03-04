@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Batch.Blast.Configuration
                 {"node.agent.sku", "batch.node.ubuntu 16.04"},
                 {"import.vm.size", "Standard_A2"},
                 {"import.vm.cores", "2"},
-                {"import.vm.maxvms", "10"},
+                {"import.vm.maxvms", "20"},
                 {"import.vm.pool", ""},
             };
 
