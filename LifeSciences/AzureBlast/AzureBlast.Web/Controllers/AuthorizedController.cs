@@ -5,6 +5,7 @@ using System.Web.Mvc;
 
 namespace Microsoft.Azure.Blast.Web.Controllers
 {
+    [RequireHttps]
     [ConfigBasedMvcAuthorize]
     public class AuthorizedController : Controller
     {
