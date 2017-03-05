@@ -1,0 +1,109 @@
+﻿@model Microsoft.Azure.Blast.Web.Models.PoolDetailsModel
+@{
+    ViewBag.Title = "Pool - " + @Model.Pool.Id;
+}
+
+<p>&nbsp;</p>
+
+<ol class="breadcrumb">
+    <li><a href="/Pool">Pools</a></li>
+    <li class="active">@Model.Pool.Id</li>
+</ol>
+
+<div class="panel panel-default">
+    <div class="panel-heading clearfix">
+        <h3 class="panel-title pull-left" style="padding-top: 7.5px;">Pool '@Model.Pool.Id' Details</h3>
+        <div class="btn-group pull-right">
+            <a id="deleteBtn" href="#" class="btn btn-danger btn-sm">Delete</a>
+        </div>
+    </div>
+    <div class="panel-body">
+        <form class="form-horizontal">
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Name</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.Id</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Display Name</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.DisplayName</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">State</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.State</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Allocation State</label>
+                <div class="col-sm-10">
+                    <p id="searchState" class="form-control-static">@Model.Pool.AllocationState</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">VM Size</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.VirtualMachineSize</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Current Node Count</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.CurrentDedicated</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Target Node Count</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@Model.Pool.TargetDedicated</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Resize Errors?</label>
+                <div class="col-sm-10">
+                    <p class="form-control-static">@(Model.Pool.ResizeError == null ? "" : string.Format("{0} - {1}", Model.Pool.ResizeError.Code, Model.Pool.ResizeError.Message))</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Creation Time</label>
+                <div class="col-sm-10">
+                    <p id="searchStartTime" class="form-control-static">@Model.Pool.CreationTime</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-heading">Compute Nodes</div>
+    <table class="table" id="nodetbl">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>State</th>
+                <th>Start Task State</th>
+                <th>Start Task Exit Code</th>
+                <th>Start Task Scheduling Errors</th>
+                <th>Start Task StdOut</th>
+                <th>Start Task StdErr</th>
+            </tr>
+        </thead>
+        <tbody id="resultTableBody">
+            @foreach (var computeNode in Model.ComputeNodes)
+            {
+                <tr>
+                    <td>@computeNode.Id</td>
+                    <td>@computeNode.State</td>
+                    <td>@(computeNode.StartTaskInformation == null ? "" : computeNode.StartTaskInformation.State.ToString())</td>
+                    <td>@(computeNode.StartTaskInformation == null || computeNode.StartTaskInformation.ExitCode == null ? "" : computeNode.StartTaskInformation.ExitCode.ToString())</td>
+                    <td>@(computeNode.StartTaskInformation == null || computeNode.StartTaskInformation.SchedulingError == null ? "" : string.Format("Category: {0}Code: {1}Details: {2}", computeNode.StartTaskInformation.SchedulingError.Category, computeNode.StartTaskInformation.SchedulingError.Code, string.Join(",", computeNode.StartTaskInformation.SchedulingError.Details.Select(detail => detail.Name + ": " + detail.Value))))</td>
+                    <td>@Html.ActionLink("stdout.txt", "DownloadStartTaskFile", "Pool", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stdout", fileExtension = "txt" }, null)</td>
+                    <td>@Html.ActionLink("stderr.txt", "DownloadStartTaskFile", "Pool", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stderr" , fileExtension = "txt" }, null)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

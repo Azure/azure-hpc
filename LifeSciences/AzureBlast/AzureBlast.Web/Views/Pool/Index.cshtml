@@ -40,23 +40,25 @@
         $(function () {
 
             $('#pooltblbody').on('click', 'tr td a', function () {
-                if (confirm("Are you sure you want to delete the pool: " + $(this).attr('id') + "?")) {
-                    $.ajax({
-                        type: 'DELETE',
-                        url: '/api/pools/' + $(this).attr('id'),
-                        contentType: false,
-                        processData: false,
-                        success: function (response) {
-                            window.location.href = "/Pool";
-                        },
-                        error: function (data) {
-                            $('#btnCreatePool').removeClass("disabled");
-                            console.log(data);
-                        }
-                    });
+                if ($(this).text() === 'Delete') {
+                    if (confirm("Are you sure you want to delete the pool: " + $(this).attr('id') + "?")) {
+                        $.ajax({
+                            type: 'DELETE',
+                            url: '/api/pools/' + $(this).attr('id'),
+                            contentType: false,
+                            processData: false,
+                            success: function (response) {
+                                window.location.href = "/Pool";
+                            },
+                            error: function (data) {
+                                $('#btnCreatePool').removeClass("disabled");
+                                console.log(data);
+                            }
+                        });
+                    }
                 }
             });
-            
+
             $.get('/api/pools', null, function(pools) {
                 $('progress').hide();
 
@@ -68,7 +70,7 @@
 
                     var tr = "<tr>\
                                 <td>\
-                                    " + pool.id + "\
+                                    <a href='/Pool/" + pool.id + "'>"+pool.id+"</a>\
                                 </td>\
                                 <td> \
                                     " + displayName + "\
@@ -88,9 +90,7 @@
                                 <td> \
                                     " + pool.targetDedicated + "\
                                 </td>\
-                                <td><a id=" + pool.id + " href=\"#\" role=\"button\" class=\"btn btn-danger btn-xs " + disabledClass + "\"> \
-                                    Delete\
-                                </a></td>\
+                                <td><a id=" + pool.id + " href=\"#\" role=\"button\" class=\"btn btn-danger btn-xs " + disabledClass + "\">Delete</a></td>\
                             </tr>;";
 
                     $('#pooltblbody').append(tr);
