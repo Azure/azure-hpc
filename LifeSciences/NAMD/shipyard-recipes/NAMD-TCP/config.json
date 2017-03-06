@@ -1,0 +1,32 @@
+{
+    "batch_shipyard": {
+        "storage_account_settings": "mystorageaccount"
+    },
+    "global_resources": {
+        "docker_images": [
+            "alfpark/namd:2.11-tcp"
+        ],
+        "docker_volumes": {
+            "shared_data_volumes": {
+                "glustervol": {
+                    "volume_driver": "glusterfs",
+                    "container_path": "$AZ_BATCH_NODE_SHARED_DIR/gfs"
+                }
+            }
+        },
+        "files": [
+            {
+                "source": {
+                    "path": "@SOURCE_PATH@"
+                },
+                "destination": {
+                    "storage_account_settings": "mystorageaccount",
+                    "data_transfer": {
+                        "container": "@JOB_ID@",
+                        "blobxfer_extra_options": "--no-computefilemd5"
+                    }
+                }
+            }
+        ]
+    }
+}

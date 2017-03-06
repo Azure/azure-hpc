@@ -1,0 +1,44 @@
+{
+    "job_specifications": [
+        {
+            "id": "@JOB_ID@",
+            "multi_instance_auto_complete": true,
+            "tasks": [
+                {
+                    "image": "alfpark/namd:2.11-tcp",
+                    "remove_container_after_exit": true,
+                    "command": "/bin/bash $AZ_BATCH_NODE_SHARED_DIR/gfs/$AZ_BATCH_JOB_ID/run_namd_tcp.sh @NAMD_INPUT_FILE@ @NAMD_ARGS@",
+                    "multi_instance": {
+                        "num_instances": "pool_current_dedicated",
+                        "coordination_command": null
+                    },
+                    "shared_data_volumes": [
+                        "glustervol"
+                    ],
+                    "input_data": {
+                        "azure_storage": [
+                            {
+                                "storage_account_settings": "mystorageaccount",
+                                "container": "@JOB_ID@",
+                                "include": ["*.*"],
+                                "destination": "$AZ_BATCH_NODE_SHARED_DIR/.gluster/gv0/$AZ_BATCH_JOB_ID",
+                                "blobxfer_extra_options": null
+                            }
+                        ]
+                    },
+                    "output_data": {
+                        "azure_storage": [
+                            {
+                                "storage_account_settings": "mystorageaccount",
+                                "container": "@JOB_ID@",
+                                "source": "$AZ_BATCH_NODE_SHARED_DIR/.gluster/gv0/$AZ_BATCH_JOB_ID",
+                                "include": ["*/domain-step1*.*"],
+                                "blobxfer_extra_options": null
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}
