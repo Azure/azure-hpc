@@ -38,6 +38,6 @@ You'll need a Azure Storage and Batch account created in the same region.  You c
 
 * Open a command prompt (Windows-R) and run cmd.exe
 * Ensure you're in the 'C:\azure-hpc\LifeSciences\NAMD' directory, or where ever you placed Azure NAMD.
-* Execute 'namd <path to NAMD conf>'
+* Execute 'namd c:\path\to\namd\model\conf.namd'
 
 Note that all files within the NAMD configuration file directory will be uploaded to the virtual machines so ensure all required files exist there.
