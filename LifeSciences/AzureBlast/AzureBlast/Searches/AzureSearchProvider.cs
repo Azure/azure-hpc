@@ -432,39 +432,65 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 throw new Exception("No such search " + searchId);
             }
 
-            IEnumerable<QueryOutput> queryOutputs;
-            IEnumerable<CloudTask> tasks;
+            IEnumerable<QueryOutput> queryOutputs = GetAllQueryOutputs(entity).ToList();
+
+            List<SearchQuery> searchQueries = new List<SearchQuery>();
 
             try
             {
-                tasks =
-                    _batchClient.JobOperations.ListTasks(entity.JobId).Where(task => task.Id != "JobManager").ToList();
-                queryOutputs = GetAllQueryOutputs(entity).ToList();
+                var tasks = _batchClient.JobOperations.ListTasks(entity.JobId).Where(
+                    task => task.Id != "JobManager").ToList();
+
+                foreach (var task in tasks)
+                {
+                    var queryOutput = GetQueryFilename(entity.OutputfileFormat, task.Id);
+                    var logOutput = GetLogFilename(task.Id);
+                    var outputs =
+                        queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
+                            .ToList();
+
+                    searchQueries.Add(new SearchQuery
+                    {
+                        Id = task.Id,
+                        InputFilename = task.DisplayName,
+                        Outputs = outputs,
+                        State = BatchToQueryState(task),
+                        StartTime = task.ExecutionInformation?.StartTime,
+                        EndTime = task.ExecutionInformation?.EndTime,
+                    });
+                }
             }
             catch (Exception)
             {
-                tasks = Enumerable.Empty<CloudTask>();
-                queryOutputs = Enumerable.Empty<QueryOutput>();
-            }
-
-            foreach (var task in tasks)
-            {
-                var queryOutput = GetQueryFilename(entity.OutputfileFormat, task.Id);
-                var logOutput = GetLogFilename(task.Id);
-                var outputs =
-                    queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
-                        .ToList();
-
-                yield return new SearchQuery
+                var inputFiles = entity.Files;
+                foreach (var queryNumber in Enumerable.Range(0, (int) entity.TotalTasks))
                 {
-                    Id = task.Id,
-                    InputFilename = task.DisplayName,
-                    Outputs = outputs,
-                    State = BatchToQueryState(task),
-                    StartTime = task.ExecutionInformation?.StartTime,
-                    EndTime = task.ExecutionInformation?.EndTime,
-                };
+                    var queryOutput = GetQueryFilename(entity.OutputfileFormat, queryNumber.ToString());
+                    var logOutput = GetLogFilename(queryNumber.ToString());
+                    var outputs =
+                        queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
+                            .ToList();
+
+                    try
+                    {
+                        searchQueries.Add(new SearchQuery
+                        {
+                            Id = queryNumber.ToString(),
+                            InputFilename = inputFiles[queryNumber],
+                            Outputs = outputs,
+                            State = QueryState.Success,
+                            StartTime = null,
+                            EndTime = null,
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error getting search query " + e);
+                    }
+                }
             }
+
+            return searchQueries;
         }
 
         private QueryState BatchToQueryState(CloudTask task)
