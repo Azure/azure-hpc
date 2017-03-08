@@ -43,6 +43,8 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
 
         public string ExecutableArgs { get; set; }
 
+        public string ExecutableArgsSanitised { get; set; }
+
         public string OutputfileFormat { get; set; }
 
         public string DatabaseId { get; set; }

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Batch.Blast.Batch;
+using Microsoft.Azure.Batch.Blast.Configuration;
 using Microsoft.Azure.Batch.Blast.Databases;
 using Microsoft.Azure.Batch.Blast.Storage;
 using Microsoft.Azure.Batch.Blast.Storage.Entities;
@@ -17,7 +18,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
 {
     public class AzureSearchProvider : ISearchProvider
     {
-        private readonly Microsoft.Azure.Batch.Blast.Configuration.BlastConfiguration _configuration;
+        private readonly BlastConfiguration _configuration;
         private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly ITableStorageProvider _tableStorageProvider;
         private readonly IDatabaseProvider _databaseProvider;
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
         private readonly StorageCredentials _storageCredentials;
         private readonly BatchCredentials _batchCredentials;
 
-        public AzureSearchProvider(Microsoft.Azure.Batch.Blast.Configuration.BlastConfiguration configuration, IDatabaseProvider databaseProvider)
+        public AzureSearchProvider(BlastConfiguration configuration, IDatabaseProvider databaseProvider)
         {
             _configuration = configuration;
             _databaseProvider = databaseProvider;
@@ -128,6 +129,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             searchEntity.DatabaseContainer = _databaseProvider.ContainerName;
             searchEntity.Executable = search.Executable;
             searchEntity.ExecutableArgs = search.ExecutableArgs;
+            searchEntity.ExecutableArgsSanitised = search.ExecutableArgs;
             searchEntity.State = SearchState.StagingData;
             searchEntity.StartTime = DateTime.UtcNow;
             searchEntity.PoolId = search.PoolId;
@@ -203,7 +205,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 var blastOutputFilename = GetLogFilename(taskId.ToString());
 
                 var cmd = string.Format("/bin/bash -c '{0}; result=$?; {1}; exit $result'",
-                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgs, filename, outputFilename, blastOutputFilename),
+                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgsSanitised, filename, outputFilename, blastOutputFilename),
                     GetUploadCommandLine(searchEntity.OutputContainer));
 
                 var task = new CloudTask(taskId.ToString(), cmd);
@@ -265,25 +267,29 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             var outputFormat = "output-{0}.xml";
             var executableArgs = searchSpec.ExecutableArgs;
 
-            if (!string.IsNullOrEmpty(executableArgs) && executableArgs.Contains(" -out "))
+            if (!string.IsNullOrEmpty(executableArgs))
             {
                 var tokens = executableArgs.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries).ToList();
-                var indexOfOutArg = tokens.IndexOf("-out");
-                var indexOfOutFilename = indexOfOutArg + 1;
-                if (indexOfOutFilename > tokens.Count - 1)
-                {
-                    throw new Exception("No filename specified for -out argument");
-                }
-                var outputFilename = tokens[indexOfOutArg + 1];
-                var name = Path.GetFileNameWithoutExtension(outputFilename);
-                var extension = Path.GetExtension(outputFilename);
-                outputFormat = name + "-{0}" + extension;
 
-                // Strip out the -out filename args as we already set it later
-                executableArgs = executableArgs.Replace(" -out " + outputFilename, " ");
+                if (tokens.Any(token => token == "-out"))
+                {
+                    var indexOfOutArg = tokens.IndexOf("-out");
+                    var indexOfOutFilename = indexOfOutArg + 1;
+                    if (indexOfOutFilename > tokens.Count - 1)
+                    {
+                        throw new Exception("No filename specified for -out argument");
+                    }
+                    var outputFilename = tokens[indexOfOutArg + 1];
+                    var name = Path.GetFileNameWithoutExtension(outputFilename);
+                    var extension = Path.GetExtension(outputFilename);
+                    outputFormat = name + "-{0}" + extension;
+
+                    // Strip out the -out filename args as we already set it later
+                    executableArgs = executableArgs.Replace(" -out " + outputFilename, " ");
+                }
             }
 
-            searchEntity.ExecutableArgs = executableArgs;
+            searchEntity.ExecutableArgsSanitised = executableArgs;
             searchEntity.OutputfileFormat = outputFormat;
         }
 
