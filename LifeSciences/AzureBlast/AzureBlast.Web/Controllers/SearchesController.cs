@@ -21,6 +21,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
             _searchProvider = searchProvider;
         }
 
+        [Route("searches")]
         public ActionResult Index()
         {
             return View();
