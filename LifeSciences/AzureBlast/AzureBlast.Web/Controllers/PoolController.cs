@@ -29,6 +29,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
             return View();
         }
 
+        [Route("Pool/New")]
         public ActionResult New()
         {
             var model = new NewPoolModel
