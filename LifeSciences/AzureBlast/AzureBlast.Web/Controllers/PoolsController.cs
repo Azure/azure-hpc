@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Mime;
 using System.Text;
-using System.Web;
 using System.Web.Mvc;
 using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Blast.Configuration;
@@ -13,23 +12,24 @@ using Microsoft.Azure.Blast.Web.Models;
 
 namespace Microsoft.Azure.Blast.Web.Controllers
 {
-    public class PoolController : AuthorizedController
+    public class PoolsController : AuthorizedController
     {
         private readonly BlastConfiguration _configuration;
         private readonly BatchClient _batchClient;
 
-        public PoolController(BlastConfiguration configuration)
+        public PoolsController(BlastConfiguration configuration)
         {
             _configuration = configuration;
             _batchClient = configuration.BatchClient;
         }
 
+        [Route("pools")]
         public ActionResult Index()
         {
             return View();
         }
 
-        [Route("Pool/New")]
+        [Route("pools/new")]
         public ActionResult New()
         {
             var model = new NewPoolModel
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
             return View(model);
         }
 
-        [Route("Pool/{poolId}")]
+        [Route("pools/{poolId}")]
         public ActionResult Show(string poolId)
         {
             var pool = _batchClient.PoolOperations.GetPool(poolId);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
             return View(model);
         }
 
-        [Route("Pool/{poolId}/computenodes/{computeNodeId}/files/{fileName}/{fileExtension}")]
+        [Route("pools/{poolId}/computenodes/{computeNodeId}/files/{fileName}/{fileExtension}")]
         public ActionResult DownloadStartTaskFile(string poolId, string computeNodeId, string fileName, string fileExtension)
         {
             var pool = _batchClient.PoolOperations.GetPool(poolId);

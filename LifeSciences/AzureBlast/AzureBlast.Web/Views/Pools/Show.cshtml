@@ -6,7 +6,7 @@
 <p>&nbsp;</p>
 
 <ol class="breadcrumb">
-    <li><a href="/Pool">Pools</a></li>
+    <li><a href="/pools">Pools</a></li>
     <li class="active">@Model.Pool.Id</li>
 </ol>
 
@@ -100,8 +100,8 @@
                     <td>@(computeNode.StartTaskInformation == null ? "" : computeNode.StartTaskInformation.State.ToString())</td>
                     <td>@(computeNode.StartTaskInformation == null || computeNode.StartTaskInformation.ExitCode == null ? "" : computeNode.StartTaskInformation.ExitCode.ToString())</td>
                     <td>@(computeNode.StartTaskInformation == null || computeNode.StartTaskInformation.SchedulingError == null ? "" : string.Format("Category: {0}Code: {1}Details: {2}", computeNode.StartTaskInformation.SchedulingError.Category, computeNode.StartTaskInformation.SchedulingError.Code, string.Join(",", computeNode.StartTaskInformation.SchedulingError.Details.Select(detail => detail.Name + ": " + detail.Value))))</td>
-                    <td>@Html.ActionLink("stdout.txt", "DownloadStartTaskFile", "Pool", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stdout", fileExtension = "txt" }, null)</td>
-                    <td>@Html.ActionLink("stderr.txt", "DownloadStartTaskFile", "Pool", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stderr" , fileExtension = "txt" }, null)</td>
+                    <td>@Html.ActionLink("stdout.txt", "DownloadStartTaskFile", "Pools", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stdout", fileExtension = "txt" }, null)</td>
+                    <td>@Html.ActionLink("stderr.txt", "DownloadStartTaskFile", "Pools", new { poolId = Model.Pool.Id, computeNodeId = computeNode.Id, fileName = "stderr" , fileExtension = "txt" }, null)</td>
                 </tr>
             }
         </tbody>

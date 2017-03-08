@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
             _externalRepositoryManager = externalRepositoryManager;
         }
 
-        // GET: Repositories
+        [Route("repositories")]
         public ActionResult Index(string id)
         {
             var repos = _externalRepositoryManager.ListRepositories().ToList();

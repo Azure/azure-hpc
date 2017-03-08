@@ -296,7 +296,7 @@
     <Compile Include="Controllers\AuthorizedController.cs" />
     <Compile Include="Controllers\ConfigBasedAuthorization.cs" />
     <Compile Include="Controllers\ConfigBasedMvcAuthorizeAttribute.cs" />
-    <Compile Include="Controllers\PoolController.cs" />
+    <Compile Include="Controllers\PoolsController.cs" />
     <Compile Include="Controllers\DatabasesController.cs" />
     <Compile Include="Controllers\RepositoriesController.cs" />
     <Compile Include="Controllers\SearchesController.cs" />
@@ -419,12 +419,12 @@
     <Content Include="Views\Searches\New.cshtml" />
     <Content Include="Views\Searches\Show.cshtml" />
     <Content Include="Views\Searches\Visualize.cshtml" />
-    <Content Include="Views\Pool\Index.cshtml" />
-    <Content Include="Views\Pool\New.cshtml" />
+    <Content Include="Views\Pools\Index.cshtml" />
+    <Content Include="Views\Pools\New.cshtml" />
     <Content Include="Scripts\jquery-2.1.3.min.map" />
     <Content Include="Views\Repositories\Index.cshtml" />
     <Content Include="Views\Databases\Index.cshtml" />
-    <Content Include="Views\Pool\Show.cshtml" />
+    <Content Include="Views\Pools\Show.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AzureBlast\AzureBlast.csproj">

@@ -4,7 +4,7 @@
 
 <p>&nbsp;</p>
 
-<a href="/Pool/New" class="btn btn-info" role="button">Create a Pool</a>
+<a href="/pools/new" class="btn btn-info" role="button">Create a Pool</a>
 
 <p>&nbsp;</p>
 
@@ -48,7 +48,7 @@
                             contentType: false,
                             processData: false,
                             success: function (response) {
-                                window.location.href = "/Pool";
+                                window.location.href = "/pools";
                             },
                             error: function (data) {
                                 $('#btnCreatePool').removeClass("disabled");
@@ -70,7 +70,7 @@
 
                     var tr = "<tr>\
                                 <td>\
-                                    <a href='/Pool/" + pool.id + "'>"+pool.id+"</a>\
+                                    <a href='/pools/" + pool.id + "'>"+pool.id+"</a>\
                                 </td>\
                                 <td> \
                                     " + displayName + "\

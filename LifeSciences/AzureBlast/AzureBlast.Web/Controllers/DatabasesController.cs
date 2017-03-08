@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
 {
     public class DatabasesController : AuthorizedController
     {
-        // GET: Database
+        [Route("databases")]
         public ActionResult Index()
         {
             return View();

@@ -6,7 +6,7 @@
 <p>&nbsp;</p>
 
 <ol class="breadcrumb">
-    <li><a href="/Pool">Pools</a></li>
+    <li><a href="/pools">Pools</a></li>
     <li class="active">New Pool</li>
 </ol>
 
@@ -112,7 +112,7 @@
                     contentType: "application/json",
                     data: request,
                     success: function (response) {
-                        window.location.href = "/Pool";
+                        window.location.href = "/pools";
                     },
                     error: function (data) {
                         $('#btnCreatePool').removeClass("disabled");
