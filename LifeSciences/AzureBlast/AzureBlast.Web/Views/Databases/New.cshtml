@@ -1,0 +1,113 @@
+﻿@{
+    ViewBag.Title = "Add Database";
+}
+
+<p>&nbsp;</p>
+
+<ol class="breadcrumb">
+    <li><a href="/databases">Databases</a></li>
+    <li class="active">Add Database</li>
+</ol>
+
+<form class="form-horizontal" role="form" enctype="multipart/form-data" data-toggle="validator">
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">Add Database</h3>
+        </div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="databaseName">Instructions</label>
+                <div class="col-sm-10">
+                    <div class="help-block with-errors">
+                        <p>To add a custom database to the portal please follow these instructions.</p>
+                        <ol>
+                            <li>Get the Azure Storage account name and key used by the BLAST portal from the <a href="https://portal.azure.com" target="_blank">Azure Portal</a></li>
+                            <li>Create a new container in the above storage account for your database, e.g. myswissprotdb</li>
+                            <li>Upload your custom uncompressed database files to the container</li>
+                            <li>Complete the form below with your database name and the container above</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="databaseName">Database name</label>
+                <div class="col-sm-10">
+                    <input id="databaseName" pattern="^[_A-z0-9]{1,}$" type="text" data-minlength="2" class="form-control" placeholder="swissprot..." aria-describedby="basic-addon1" required>
+                    <span class="glyphicon form-control-feedback" aria-hidden="true"></span>
+                    <div class="help-block with-errors">
+                        The database name must match the database segment names, e.g. [databasename].pal, [databasename].00.phr
+                        <p>The database name can contain any characters except [/\#?] and spaces</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="databaseContainerName">Container name</label>
+                <div class="col-sm-10">
+                    <input id="databaseContainerName" pattern="^[a-z0-9]{1,}$" data-minlength="3" type="text" class="form-control" placeholder="Database container name..." aria-describedby="basic-addon1" required>
+                    <span class="glyphicon form-control-feedback" aria-hidden="true"></span>
+                    <div class="help-block with-errors">Container names must be lower case and start with a letter or number, and can contain only letters, numbers, and the dash (-) character.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-sm-offset-0 col-sm-10">
+            <button id="btnAddDatabase" type="submit" class="btn btn-success">Add Database</button>
+        </div>
+        <progress style="display: none"></progress>
+    </div>
+</form>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+@section scripts
+{
+<script>
+        $(function () {
+
+            $("form").submit(function (e) {
+                // stop the form from posting
+                e.preventDefault();
+            });
+
+            // intercept button click and post the form data to the API
+            $("#btnAddDatabase").click(function () {
+
+                $('#btnAddDatabase').addClass("disabled");
+
+                var name = $('#databaseName').val().trim();
+                var containerName = $('#databaseContainerName').val().trim();
+
+                var poolSpec = {
+                    name: name,
+                    containerName: containerName
+                };
+
+                var request = JSON.stringify(poolSpec);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/api/databases',
+                    contentType: false,
+                    processData: false,
+                    contentType: "application/json",
+                    data: request,
+                    success: function (response) {
+                        window.location.href = "/databases";
+                    },
+                    error: function (data) {
+                        $('#btnAddDatabase').removeClass("disabled");
+                        console.log(data);
+                        alert('Error adding database: ' + data.responseText);
+                    }
+                });
+            });
+        });
+</script>
+}

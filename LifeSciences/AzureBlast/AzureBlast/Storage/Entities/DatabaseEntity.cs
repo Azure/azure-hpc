@@ -33,7 +33,18 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
 
         public string Name { get { return RowKey; } }
 
+        public string DisplayName { get; set; }
+
         public string ContainerName { get; set; }
+
+        public bool? _DedicatedContainer { get; set; }
+
+        [IgnoreProperty]
+        public bool DedicatedContainer
+        {
+            get { return _DedicatedContainer.HasValue ? _DedicatedContainer.Value : false; }
+            set { _DedicatedContainer = value; }
+        }
 
         public string _Type { get; set; }
 

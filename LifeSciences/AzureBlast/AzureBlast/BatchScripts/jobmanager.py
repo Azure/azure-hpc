@@ -98,7 +98,7 @@ if __name__ == '__main__':
             files += 1
             total_size += blob.properties.content_length
             extension = blob.name.split(".")[-1]
-            if extension.startswith('n'):
+            if extension.startswith('p'):
                 db_type = 'Protein'
 
         entity = table_service.get_entity(table_name, entity_pk, entity_rk)

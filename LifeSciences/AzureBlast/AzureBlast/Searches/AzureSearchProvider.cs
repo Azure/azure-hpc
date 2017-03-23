@@ -126,7 +126,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             searchEntity.OutputContainer = queryId.ToString();
             searchEntity.DatabaseId = search.DatabaseName;
             searchEntity.DatabaseType = database.Type;
-            searchEntity.DatabaseContainer = _databaseProvider.ContainerName;
+            searchEntity.DatabaseContainer = database.ContainerName;
             searchEntity.Executable = search.Executable;
             searchEntity.ExecutableArgs = search.ExecutableArgs;
             searchEntity.ExecutableArgsSanitised = search.ExecutableArgs;
@@ -339,6 +339,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 CommandLine = cmd,
                 ResourceFiles = resourceFiles,
                 UserIdentity = new UserIdentity(new AutoUserSpecification(elevationLevel: ElevationLevel.Admin)),
+
             };
         }
 

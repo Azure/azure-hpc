@@ -14,11 +14,13 @@ namespace Microsoft.Azure.Batch.Blast.Databases
         public const string DefaultContainerName = "blast-databases";
 
         private readonly ITableStorageProvider _tableStorageProvider;
+        private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly BlobBackedDatabaseProvider _blobBackedDatabaseProvider;
 
         public SystemDatabaseProvider(Microsoft.Azure.Batch.Blast.Configuration.BlastConfiguration configuration, string containerName)
         {
             _tableStorageProvider = configuration.TableStorageProvider;
+            _blobStorageProvider = configuration.BlobStorageProvider;
             _blobBackedDatabaseProvider = new BlobBackedDatabaseProvider(configuration.BlobStorageProvider, containerName);
         }
 
@@ -35,25 +37,44 @@ namespace Microsoft.Azure.Batch.Blast.Databases
 
         public IReadOnlyList<DatabaseFragment> GetDatabaseFragments(string databaseName)
         {
-            return _blobBackedDatabaseProvider.GetDatabaseFragments(databaseName);
+            var db = GetDatabase(databaseName);
+
+            if (db == null)
+            {
+                throw new Exception("No such database " + databaseName);
+            }
+
+            var databaseProvider = GetDatabaseProvider(db);
+            return databaseProvider.GetDatabaseFragments(databaseName);
         }
 
         public void DeleteDatabase(string databaseName)
         {
-            try
-            {
-                _blobBackedDatabaseProvider.DeleteDatabase(databaseName);
-            }
-            catch (Exception)
-            {
-            }
+            var db = GetDatabase(databaseName);
 
-            var entity = _tableStorageProvider.GetEntity<DatabaseEntity>(DatabaseEntity.DefaultRepository, databaseName);
-
-            if (entity != null)
+            if (db != null)
             {
-                _tableStorageProvider.DeleteEntity(entity);
+                try
+                {
+                    var databaseProvider = GetDatabaseProvider(db);
+                    databaseProvider.DeleteDatabase(databaseName);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("Error deleteing database " + databaseName);
+                }
+
+                _tableStorageProvider.DeleteEntity(db);
             }
+        }
+
+        private IDatabaseProvider GetDatabaseProvider(DatabaseEntity db)
+        {
+            if (db != null && db.DedicatedContainer)
+            {
+                return new BlobBackedDatabaseProvider(_blobStorageProvider, db.ContainerName, true);
+            }
+            return _blobBackedDatabaseProvider;
         }
 
         public string ContainerName { get { return DefaultContainerName; } }

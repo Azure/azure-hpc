@@ -13,5 +13,7 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
         /// <param name="externalRepository"></param>
         /// <param name="externalDatabase"></param>
         void SubmitImport(ExternalRepository externalRepository, ExternalDatabase externalDatabase);
+
+        void ImportExisting(string databaseName, string description, string containerName);
     }
 }

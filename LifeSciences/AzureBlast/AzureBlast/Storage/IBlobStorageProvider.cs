@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Batch.Blast.Storage
 {
@@ -27,5 +28,7 @@ namespace Microsoft.Azure.Batch.Blast.Storage
         void UploadBlobFromStream(string containerName, string blobName, Stream stream);
 
         BlobLease AcquireBlobLease(string containerName, string blobName);
+
+        CloudBlobContainer GetContainer(string containerName);
     }
 }

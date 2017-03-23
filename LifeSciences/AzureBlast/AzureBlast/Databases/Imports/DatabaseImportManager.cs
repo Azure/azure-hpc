@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Batch.Blast.Batch;
+using Microsoft.Azure.Batch.Blast.Configuration;
 using Microsoft.Azure.Batch.Blast.Databases.ExternalSources;
 using Microsoft.Azure.Batch.Blast.Storage;
 using Microsoft.Azure.Batch.Blast.Storage.Entities;
@@ -15,14 +17,14 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
 {
     public class DatabaseImportManager : IDatabaseImportManager
     {
-        private readonly Microsoft.Azure.Batch.Blast.Configuration.BlastConfiguration _configuration;
+        private readonly BlastConfiguration _configuration;
         private readonly ITableStorageProvider _tableStorageProvider;
         private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly BatchClient _batchClient;
         private readonly StorageCredentials _storageCredentials;
         private readonly BatchCredentials _batchCredentials;
 
-        public DatabaseImportManager(Microsoft.Azure.Batch.Blast.Configuration.BlastConfiguration configuration)
+        public DatabaseImportManager(BlastConfiguration configuration)
         {
             _configuration = configuration;
             _tableStorageProvider = configuration.TableStorageProvider;
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
 
             var jobId = string.Format("import-{0}-{1}", externalDatabase.Name, Guid.NewGuid());
             var fragments = externalRepository.DatabaseSource.GetDatabaseFragments(externalDatabase.Name);
-            var entity = CreateDatabaseEntity(jobId, externalDatabase.Name, fragments.Count);
+            var entity = CreateDatabaseEntity(SystemDatabaseProvider.DefaultContainerName, jobId, externalDatabase.Name, fragments.Count);
 
             try
             {
@@ -57,11 +59,46 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
             }
         }
 
-        private DatabaseEntity CreateDatabaseEntity(string jobId, string databaseName, int fragmentCount)
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="databaseName"></param>
+        /// <param name="containerName"></param>
+        public void ImportExisting(string databaseName, string databaseDescription, string containerName)
+        {
+            var container = _blobStorageProvider.GetContainer(containerName);
+
+            if (container == null)
+            {
+                throw new Exception("Database container not found");
+            }
+
+            var blobs = _blobStorageProvider.ListBlobs(containerName).ToList();
+
+            if (!blobs.Any())
+            {
+                throw new Exception("Container contains no database files");
+            }
+
+            var entity = CreateDatabaseEntity(containerName, null, databaseName, blobs.Count, false);
+            entity.DisplayName = databaseDescription;
+            entity.CompletedTasks = blobs.Count;
+            entity.State = DatabaseState.Ready;
+            entity.TotalSize = blobs.Sum(b => b.Length);
+            entity.FileCount = blobs.Count;
+            entity.DedicatedContainer = true;
+            entity.Type = blobs.Any(b => Path.GetExtension(b.BlobName).StartsWith(".p"))
+                ? DatabaseType.Protein
+                : DatabaseType.Nucleotide;
+
+            _tableStorageProvider.UpsertEntity(entity);
+        }
+
+        private DatabaseEntity CreateDatabaseEntity(string containerName, string jobId, string databaseName, int fragmentCount, bool insertEntity = true)
         {
             var entity = new DatabaseEntity(
                 databaseName,
-                SystemDatabaseProvider.DefaultContainerName,
+                containerName,
                 0, // Zero file count for now as we don't know until extracted
                 0, // Zero until extracted
                 DatabaseState.ImportingWaitingForResources,
@@ -72,8 +109,11 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
             entity.TotalTasks = fragmentCount;
             entity.CompletedTasks = 0;
 
-            // We allow upsert in case someone wants to re-import/overwrite
-            _tableStorageProvider.UpsertEntity(entity);
+            if (insertEntity)
+            {
+                // We allow upsert in case someone wants to re-import/overwrite
+                _tableStorageProvider.UpsertEntity(entity);
+            }
 
             return entity;
         }
@@ -121,15 +161,6 @@ namespace Microsoft.Azure.Batch.Blast.Databases.Imports
             {
                 // Ensure we don't already have one
                 throw new Exception("Import already in progress for database: " + databaseName);
-            }
-        }
-
-        private void StageImportScripts(string containerName)
-        {
-            var path = GetImportScriptsPath();
-            foreach (var filepath in Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly))
-            {
-                _blobStorageProvider.UploadBlobFromStream(containerName, Path.GetFileName(filepath), File.OpenRead(filepath));
             }
         }
 

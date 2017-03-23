@@ -12,5 +12,11 @@ namespace Microsoft.Azure.Blast.Web.Controllers
         {
             return View();
         }
+
+        [Route("databases/new")]
+        public ActionResult New()
+        {
+            return View();
+        }
     }
 }

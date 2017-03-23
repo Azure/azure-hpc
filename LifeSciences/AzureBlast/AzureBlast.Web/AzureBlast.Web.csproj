@@ -305,6 +305,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\AddDatabaseSpec.cs" />
     <Compile Include="Models\NewPoolModel.cs" />
     <Compile Include="Models\NewSearchModel.cs" />
     <Compile Include="Models\PoolDetailsModel.cs" />
@@ -425,6 +426,7 @@
     <Content Include="Views\Repositories\Index.cshtml" />
     <Content Include="Views\Databases\Index.cshtml" />
     <Content Include="Views\Pools\Show.cshtml" />
+    <Content Include="Views\Databases\New.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AzureBlast\AzureBlast.csproj">

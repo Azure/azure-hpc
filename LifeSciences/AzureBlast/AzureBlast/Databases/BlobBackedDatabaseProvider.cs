@@ -15,8 +15,9 @@ namespace Microsoft.Azure.Batch.Blast.Databases
     {
         private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly string _databaseContainerName;
+        private readonly bool _dedicatedContainer;
 
-        public BlobBackedDatabaseProvider(IBlobStorageProvider blobStorageProvider, string databaseContainerName)
+        public BlobBackedDatabaseProvider(IBlobStorageProvider blobStorageProvider, string databaseContainerName, bool dedicatedContainer = false)
         {
             if (blobStorageProvider == null)
             {
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.Batch.Blast.Databases
             }
             _blobStorageProvider = blobStorageProvider;
             _databaseContainerName = databaseContainerName;
+            _dedicatedContainer = dedicatedContainer;
         }
 
         public IReadOnlyList<DatabaseEntity> ListDatabases()
@@ -68,8 +70,11 @@ namespace Microsoft.Azure.Batch.Blast.Databases
 
         public IReadOnlyList<DatabaseFragment> GetDatabaseFragments(string databaseName)
         {
+            string prefix = _dedicatedContainer ? null : databaseName + ".";
+
             var databaseBlobs =
-                _blobStorageProvider.ListBlobs(_databaseContainerName, databaseName + ".").ToList();
+                _blobStorageProvider.ListBlobs(_databaseContainerName, prefix).ToList();
+
             return databaseBlobs.Select(
                     blob =>
                         new DatabaseFragment(blob.BlobName, blob.Length)).ToList();

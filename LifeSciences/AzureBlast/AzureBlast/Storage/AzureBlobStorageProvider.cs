@@ -168,6 +168,22 @@ namespace Microsoft.Azure.Batch.Blast.Storage
             return lease.AcquireLease(containerName, blobName);
         }
 
+        public CloudBlobContainer GetContainer(string containerName)
+        {
+            if (string.IsNullOrEmpty(containerName))
+            {
+                throw new ArgumentNullException("containerName");
+            }
+
+            var containerRef = _cloudBlobClient.GetContainerReference(containerName);
+
+            if (!containerRef.Exists())
+            {
+                return null;
+            }
+
+            return containerRef;
+        }
 
         public Stream GetBlobAsStream(string containerName, string blobName)
         {
