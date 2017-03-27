@@ -36,12 +36,24 @@ if [ "$DATABASE_CONTAINER" != "blast-databases" ]; then
     INCLUDE_PATTERN="*"
 fi
 
+OS_MEMORY=4096
+if [ -n "$AZ_BLAST_OS_MEMORY" ]; then
+    OS_MEMORY=$$AZ_BLAST_OS_MEMORY
+fi
+
+# Install pre req packages
 sudo apt-get update
 sudo apt-get install -y build-essential libssl-dev libffi-dev libpython3-dev python3-dev python3-pip wget curl ncbi-blast+
 sudo -H pip3 install --upgrade pip
 sudo -H pip3 install --upgrade blobxfer
 sudo -H pip3 install --upgrade azure-storage
 sudo -H pip3 install --upgrade azure-batch
+
+# Resize the tmpfs ram disk
+total_mem=`free -m | awk '/Mem:/ {print $2}'`
+tmpfs_mem=$((total_mem - OS_MEMORY))
+sudo mount -o remount,size=${tmpfs_mem}M /dev/shm
+df -h # debug
 
 blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$INCLUDE_PATTERN"
 exit $?
