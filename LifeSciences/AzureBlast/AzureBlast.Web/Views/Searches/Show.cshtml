@@ -209,8 +209,13 @@
                 }
 
             }).error(function (data) {
-                alert("Error getting data: " + data.responseText);
-                console.error(data);
+                if (data.status === 403) {
+                    console.debug("Authentication error, reloading page to refresh token.");
+                    window.location.reload(true);
+                } else {
+                    alert("Error getting search\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
+                    console.error(data);
+                }
             });
         }
 
@@ -218,7 +223,7 @@
 
             console.log("loading queries...");
 
-            $.get('/api/searches/@Model.Id/queries', null, function (searchQueries) {
+            $.get('/api/searches/@Model.Id/queries2', null, function (searchQueries) {
 
             $('progress').hide();
 
@@ -262,8 +267,13 @@
                 $('#resultTableBody').append(html);
 
         }).error(function (data) {
-            alert("Error getting data: " + data.responseText);
-            console.error(data);
+            if (data.status === 403) {
+                console.debug("Authentication error, reloading page to refresh token.");
+                window.location.reload(true);
+            } else {
+                alert("Error getting search queries\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
+                console.error(data);
+            }
         });
 
         // Whether success or error, reload
