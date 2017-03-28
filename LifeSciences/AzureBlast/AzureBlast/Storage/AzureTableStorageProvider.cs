@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Batch.Blast.Storage
 
             foreach (var entity in entities)
             {
-                if (batchInsert.Count == 95)
+                if (batchInsert.Count == 99)
                 {
                     table.ExecuteBatch(batchInsert);
                     batchInsert = new TableBatchOperation();
@@ -44,7 +44,10 @@ namespace Microsoft.Azure.Batch.Blast.Storage
                 batchInsert.Insert(entity);
             }
 
-            table.ExecuteBatch(batchInsert);
+            if (batchInsert.Count > 0)
+            {
+                table.ExecuteBatch(batchInsert);
+            }
         }
 
         public void UpdateEntity<T>(T entity) where T : TableEntity

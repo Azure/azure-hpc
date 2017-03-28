@@ -55,6 +55,7 @@ def wait_for_tasks_to_complete(
             'SearchQueryEntity',
             filter="PartitionKey eq '{}'".format(entity.RowKey))
 
+        current_batch_count = 0
         updateBatch = TableBatch()
 
         for task in tasks:
@@ -81,8 +82,15 @@ def wait_for_tasks_to_complete(
 
             if update:
                 updateBatch.update_entity(query)
+                current_batch_count += 1
 
-        table_service.commit_batch('SearchQueryEntity', updateBatch)
+            if current_batch_count == 99:
+                table_service.commit_batch('SearchQueryEntity', updateBatch)
+                current_batch_count = 0
+                updateBatch = TableBatch()
+
+        if current_batch_count > 0:
+            table_service.commit_batch('SearchQueryEntity', updateBatch)
 
         all_tasks_complete = not incomplete_tasks
         any_failures = len(failed_tasks) > 0
