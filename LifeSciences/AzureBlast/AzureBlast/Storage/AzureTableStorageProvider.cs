@@ -31,11 +31,19 @@ namespace Microsoft.Azure.Batch.Blast.Storage
         {
             CloudTable table = _cloudTableClient.GetTableReference(typeof(T).Name);
             table.CreateIfNotExists();
+
             TableBatchOperation batchInsert = new TableBatchOperation();
+
             foreach (var entity in entities)
             {
+                if (batchInsert.Count == 95)
+                {
+                    table.ExecuteBatch(batchInsert);
+                    batchInsert = new TableBatchOperation();
+                }
                 batchInsert.Insert(entity);
             }
+
             table.ExecuteBatch(batchInsert);
         }
 

@@ -310,6 +310,7 @@
                             $('progress').hide();
                             $('#btnSearch').removeClass("disabled");
                             console.log(data);
+                            alert("Error getting search queries\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
                         }
                     });
                 }
