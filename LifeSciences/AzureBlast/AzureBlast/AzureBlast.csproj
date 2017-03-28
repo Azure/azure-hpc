@@ -157,10 +157,10 @@
     <Compile Include="Searches\QueryState.cs" />
     <Compile Include="Searches\Search.cs" />
     <Compile Include="Searches\SearchInputFile.cs" />
-    <Compile Include="Searches\SearchQuery.cs" />
     <Compile Include="Searches\SearchSpecification.cs" />
     <Compile Include="Searches\SearchState.cs" />
     <Compile Include="Searches\TimeSpanExtensions.cs" />
+    <Compile Include="Storage\Entities\SearchQueryEntity.cs" />
     <Compile Include="Storage\InputFileStager.cs" />
     <Compile Include="Storage\RenewableBlobLease.cs" />
     <Compile Include="Storage\AzureBlobStorageProvider.cs" />
@@ -189,6 +189,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BatchScripts\SearchJobManager.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="BatchScripts\jobmanager.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

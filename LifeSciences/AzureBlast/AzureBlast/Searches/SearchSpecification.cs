@@ -17,6 +17,10 @@ namespace Microsoft.Azure.Batch.Blast.Searches
 
         public IEnumerable<SearchInputFile> SearchInputFiles { get; set; }
 
+        public bool SplitSequenceFile { get; set; }
+
+        public int SequencesPerQuery { get; set; }
+
         public string PoolId { get; set; }
 
         public int? TargetDedicated { get; set; }

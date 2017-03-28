@@ -27,6 +27,18 @@ namespace Microsoft.Azure.Batch.Blast.Storage
             table.Execute(insertOperation);
         }
 
+        public void InsertEntities<T>(IEnumerable<T> entities) where T : TableEntity
+        {
+            CloudTable table = _cloudTableClient.GetTableReference(typeof(T).Name);
+            table.CreateIfNotExists();
+            TableBatchOperation batchInsert = new TableBatchOperation();
+            foreach (var entity in entities)
+            {
+                batchInsert.Insert(entity);
+            }
+            table.ExecuteBatch(batchInsert);
+        }
+
         public void UpdateEntity<T>(T entity) where T : TableEntity
         {
             CloudTable table = _cloudTableClient.GetTableReference(entity.GetType().Name);

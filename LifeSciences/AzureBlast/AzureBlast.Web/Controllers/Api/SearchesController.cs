@@ -42,9 +42,9 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
         }
 
         [Route("searches/{searchId}/queries"), HttpGet]
-        public IEnumerable<SearchQuery> GetSearchQueries(Guid searchId)
+        public IEnumerable<SearchQueryEntity> GetSearchQueries(Guid searchId)
         {
-            return _searchProvider.ListSearchQueries(searchId).OrderBy(q => q.InputFilename);
+            return _searchProvider.ListSearchQueries(searchId).OrderBy(q => q.QueryFilename);
         }
 
         [Route("searches/{searchId}"), HttpGet]
@@ -116,13 +116,89 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
 
                     using (var reader = fileInfo.OpenText())
                     {
-                        var sequenceText = reader.ReadToEnd();
-                        searchInputFiles.Add(new SearchInputFile
+                        var fullFilename = file.Headers.ContentDisposition.FileName.Replace("\"", "");
+
+                        if (searchModel.SplitSequenceFile)
                         {
-                            Filename = file.Headers.ContentDisposition.FileName.Replace("\"", ""),
-                            Length = fileInfo.Length,
-                            Content = new MemoryStream(Encoding.UTF8.GetBytes(sequenceText)),
-                        });
+                            var filename = Path.GetFileNameWithoutExtension(fullFilename);
+                            var extension = Path.GetExtension(fullFilename);
+
+                            int currentSequenceCount = 0;
+                            int currentFileCount = 1;
+                            string currentSequenceContent = null;
+                            string sequenceFilename;
+
+                            var line = reader.ReadLine();
+                            while (line != null)
+                            {
+                                if (string.IsNullOrEmpty(line) || line.Trim() == "")
+                                {
+                                    continue;
+                                }
+
+                                if (line.StartsWith(">"))
+                                {
+                                    if (string.IsNullOrEmpty(currentSequenceContent))
+                                    {
+                                        // We're the first sequence
+                                        currentSequenceContent = line;
+                                    }
+                                    else
+                                    {
+                                        currentSequenceCount++;
+
+                                        if (currentSequenceCount % searchModel.SequencesPerQuery == 0)
+                                        {
+                                            // Flush previous sequence(s)
+                                            sequenceFilename = string.Format("{0}_part{1}{2}",
+                                                filename, currentFileCount++, extension);
+                                            searchInputFiles.Add(new SearchInputFile
+                                            {
+                                                Filename = sequenceFilename,
+                                                Length = Encoding.UTF8.GetByteCount(currentSequenceContent),
+                                                Content = new MemoryStream(Encoding.UTF8.GetBytes(currentSequenceContent)),
+                                            });
+
+                                            currentSequenceContent = line;
+                                        }
+                                        else
+                                        {
+                                            // Keep appending
+                                            currentSequenceContent += "\n" + line;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    currentSequenceContent += "\n" + line;
+                                }
+
+                                line = reader.ReadLine();
+                            }
+
+                            if (!string.IsNullOrEmpty(currentSequenceContent))
+                            {
+                                // Flush the final one
+                                sequenceFilename = string.Format("{0}_part{1}{2}",
+                                    filename, currentFileCount, extension);
+                                searchInputFiles.Add(new SearchInputFile
+                                {
+                                    Filename = sequenceFilename,
+                                    Length = Encoding.UTF8.GetByteCount(currentSequenceContent),
+                                    Content = new MemoryStream(Encoding.UTF8.GetBytes(currentSequenceContent)),
+                                });
+                            }
+                        }
+                        else
+                        {
+                            var sequenceText = reader.ReadToEnd();
+                            searchInputFiles.Add(new SearchInputFile
+                            {
+                                Filename = fullFilename,
+                                Length = fileInfo.Length,
+                                Content = new MemoryStream(Encoding.UTF8.GetBytes(sequenceText)),
+                            });
+                        }
                     }
 
                     try
@@ -155,6 +231,12 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 {
                     return Request.CreateErrorResponse(HttpStatusCode.BadRequest,
                         "The program name must be provided with the search");
+                }
+
+                if (searchModel.SplitSequenceFile && searchModel.SequencesPerQuery < 1)
+                {
+                    return Request.CreateErrorResponse(HttpStatusCode.BadRequest,
+                        "Sequences per query must ne greater than 0 when splitting a sequence file.");
                 }
 
                 if (!searchModel.SearchInputFiles.Any())
@@ -191,6 +273,8 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 Executable = formData["executable"],
                 ExecutableArgs = formData["executableArgs"],
                 SearchInputFiles = new List<SearchInputFile>(),
+                SplitSequenceFile = ToBoolean(formData["splitSequenceFile"]),
+                SequencesPerQuery = ToInt(formData["seqencesPerQuery"], 1),
             };
 
             AddPoolSpecToSearch(formData, spec);
@@ -230,6 +314,26 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 spec.VirtualMachineSize = formData["virtualMachineSize"];
                 spec.PoolDisplayName = formData["poolName"];
             }
+        }
+
+        private bool ToBoolean(string formValue)
+        {
+            bool value;
+            if (Boolean.TryParse(formValue, out value))
+            {
+                return value;
+            }
+            return false;
+        }
+
+        private int ToInt(string formValue, int defaultValue)
+        {
+            int value;
+            if (int.TryParse(formValue, out value))
+            {
+                return value;
+            }
+            return defaultValue;
         }
     }
 }

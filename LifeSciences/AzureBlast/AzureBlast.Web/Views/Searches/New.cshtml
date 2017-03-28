@@ -54,7 +54,19 @@
             <div class="form-group">
                 <label class="control-label col-sm-2" for="searchFile">Sequence file(s)</label>
                 <div class="col-sm-10">
-                    <input id="searchFile" name="searchFile" type="file" multiple="multiple" accept="*" />
+                    <input id="searchFile" name="searchFile" type="file" multiple="multiple" accept="*"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="searchFile">Split sequence file</label>
+                <div class="col-sm-10">
+                    <input id="splitSequenceFileCheckBox" type="checkbox" name="splitSequenceFile" value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2" for="seqencesPerQuery">Sequences per query</label>
+                <div class="col-sm-10">
+                    <input id="seqencesPerQuery" type="text" class="form-control" placeholder="1" aria-describedby="basic-addon1" value="1">
                 </div>
             </div>
         </div>
@@ -235,6 +247,9 @@
 
                 var searchName = $('#searchName').val().trim();
                 var searchSequenceText = $('#searchSequenceText').val().trim();
+                var splitSequenceFile = $('#splitSequenceFileCheckBox').is(':checked');
+                var seqencesPerQuery = $('#seqencesPerQuery').val().trim();
+
 
                 var poolId = $('#poolListBtn').text().trim();
                 var vmSize = $('#vmSizeListBtn').text().trim();
@@ -245,6 +260,8 @@
                 var searchFile = $("#searchFile")[0];
                 formData.append("searchName", searchName);
                 formData.append("searchSequenceText", searchSequenceText);
+                formData.append("splitSequenceFile", splitSequenceFile);
+                formData.append("seqencesPerQuery", seqencesPerQuery);
                 formData.append("databaseName", database);
                 formData.append("executable", executable);
                 formData.append("executableArgs", executableArgs);

@@ -68,13 +68,25 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                     _blobStorageProvider.UploadBlobFromStream(searchEntity.InputContainer, filename, queryFile.Content);
                 });
 
-                // Keep record of the filenames
-                searchEntity.Files =
-                    search.SearchInputFiles.Select(queryFile => Path.GetFileName(queryFile.Filename)).ToList();
+                var queryIndex = 0;
+                var searchQueries = new List<SearchQueryEntity>();
+                foreach (var queryFile in search.SearchInputFiles)
+                {
+                    var query = new SearchQueryEntity(searchEntity.Id, queryIndex.ToString());
+                    query.OutputContainer = searchEntity.OutputContainer;
+                    query.QueryFilename = Path.GetFileName(queryFile.Filename);
+                    query.State = QueryState.Waiting;
+                    query.QueryOutputFilename = GetQueryOutputFilename(searchEntity.OutputfileFormat, queryIndex.ToString());
+                    query.LogOutputFilename = GetLogFilename(searchEntity.OutputfileFormat, queryIndex.ToString());
+                    searchQueries.Add(query);
+                    queryIndex++;
+                }
+
+                _tableStorageProvider.InsertEntities(searchQueries);
 
                 // Stage the generic batch scripts to storage
                 var resourceFiles = InputFileStager.StageImportScripts(_blobStorageProvider);
-                SubmitBatchJob(searchEntity, resourceFiles);
+                SubmitBatchJob(searchEntity, searchQueries, resourceFiles);
 
                 searchEntity.State = SearchState.Running;
                 _tableStorageProvider.UpdateEntity(searchEntity);
@@ -143,7 +155,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             return searchEntity;
         }
 
-        private void SubmitBatchJob(SearchEntity searchEntity, List<ResourceFile> resourceFiles)
+        private void SubmitBatchJob(SearchEntity searchEntity, IEnumerable<SearchQueryEntity> queries, List<ResourceFile> resourceFiles)
         {
             PoolInformation poolInfo;
 
@@ -188,32 +200,29 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 resourceFiles);
             job.Commit();
 
-            var tasks = GetTasks(searchEntity);
+            var tasks = GetTasks(searchEntity, queries);
             job.Refresh();
             job.AddTask(tasks);
 
-            job.Refresh();
-            job.OnAllTasksComplete = OnAllTasksComplete.TerminateJob;
+//            job.Refresh();
+//            job.OnAllTasksComplete = OnAllTasksComplete.TerminateJob;
         }
 
-        public IEnumerable<CloudTask> GetTasks(SearchEntity searchEntity)
+        private IEnumerable<CloudTask> GetTasks(SearchEntity searchEntity, IEnumerable<SearchQueryEntity> queries)
         {
             var taskId = 0;
-            foreach (var filename in searchEntity.Files)
+            foreach (var query in queries)
             {
-                var outputFilename = GetQueryFilename(searchEntity.OutputfileFormat, taskId.ToString());
-                var blastOutputFilename = GetLogFilename(taskId.ToString());
-
                 var cmd = string.Format("/bin/bash -c '{0}; result=$?; {1}; exit $result'",
-                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgsSanitised, filename, outputFilename, blastOutputFilename),
+                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgsSanitised, query.QueryFilename, query.QueryOutputFilename, query.LogOutputFilename),
                     GetUploadCommandLine(searchEntity.OutputContainer));
 
                 var task = new CloudTask(taskId.ToString(), cmd);
-                task.DisplayName = filename;
+                task.DisplayName = query.QueryFilename;
                 task.UserIdentity = new UserIdentity(new AutoUserSpecification(elevationLevel: ElevationLevel.Admin));
                 task.ResourceFiles = new List<ResourceFile>
                 {
-                    new ResourceFile(_blobStorageProvider.GetBlobSAS(searchEntity.InputContainer, filename), filename)
+                    new ResourceFile(_blobStorageProvider.GetBlobSAS(searchEntity.InputContainer, query.QueryFilename), query.QueryFilename)
                 };
 
                 task.EnvironmentSettings = new[]
@@ -227,18 +236,27 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             }
         }
 
-        private static string GetQueryFilename(string outputFilenameFormat, string taskId)
+        private static string GetQueryOutputFilename(string outputFilenameFormat, string taskId)
         {
+            // outputFilenameFormat is only used here to determine if we should use the old legacy names.
+            if (string.IsNullOrEmpty(outputFilenameFormat))
+            {
+                return string.Format("queryoutput-{0}.xml", taskId);
+            }
             return string.Format(outputFilenameFormat, taskId);
         }
 
-        private static string GetLogFilename(string taskId)
+        private static string GetLogFilename(string outputFilenameFormat, string taskId)
         {
+            if (string.IsNullOrEmpty(outputFilenameFormat))
+            {
+                return string.Format("blastoutput-{0}.log", taskId);
+            }
             return string.Format("log-{0}.txt", taskId);
         }
 
         private string GetBlastCommandLine(string databaseName, string executable, string executableArgs,
-            string queryFilename, string queryOutputFilename, string blastOutputFilename)
+            string queryFilename, string queryOutputFilename, string logOutputFilename)
         {
             var outputFormat = "-outfmt 5"; // XML
             if (!string.IsNullOrEmpty(executableArgs) && executableArgs.Contains(" -outfmt "))
@@ -254,7 +272,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 outputFormat,
                 queryOutputFilename,
                 executableArgs,
-                blastOutputFilename);
+                logOutputFilename);
         }
 
         /// <summary>
@@ -304,13 +322,12 @@ namespace Microsoft.Azure.Batch.Blast.Searches
         public JobManagerTask GetJobManagerTask(string searchId, List<ResourceFile> resourceFiles)
         {
             var cmd =
-                string.Format("/bin/bash -c 'python3 jobmanager.py {0} {1} {2} {3} {4} {5} {6} {7} {8}'",
+                string.Format("/bin/bash -c 'python3 SearchJobManager.py {0} {1} {2} {3} {4} {5} {6} {7}'",
                 _storageCredentials.Account,
                 _storageCredentials.Key,
                 _batchCredentials.Account,
                 _batchCredentials.Key,
                 _batchCredentials.Url,
-                typeof(SearchEntity).Name, // Table name
                 "$AZ_BATCH_JOB_ID",
                 SearchEntity.AllUsersPk, // PK for JobMananger
                 searchId); // RK for JobManager
@@ -322,7 +339,8 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 RunExclusive = false,
                 UserIdentity = new UserIdentity(new AutoUserSpecification(elevationLevel: ElevationLevel.Admin)),
                 ResourceFiles = resourceFiles,
-                Constraints = new TaskConstraints(null, null, 3),
+                Constraints = new TaskConstraints(null, null, 5),
+                KillJobOnCompletion = true,
             };
         }
 
@@ -430,7 +448,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             return _tableStorageProvider.ListEntities<SearchEntity>(SearchEntity.AllUsersPk);
         }
 
-        public IEnumerable<SearchQuery> ListSearchQueries(Guid searchId)
+        public IEnumerable<SearchQueryEntity> ListSearchQueries(Guid searchId)
         {
             var entity = _tableStorageProvider.GetEntity<SearchEntity>(SearchEntity.AllUsersPk, searchId.ToString());
 
@@ -439,9 +457,24 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 throw new Exception("No such search " + searchId);
             }
 
+            if (entity.Version == 0)
+            {
+                return ListLegacySearchQueries(entity);
+            }
+
+            if (entity.Version == 1)
+            {
+                return ListV1SearchQueries(entity);
+            }
+
+            throw new ArgumentException("Unknown search version: " + entity.Version);
+        }
+
+        private IEnumerable<SearchQueryEntity> ListLegacySearchQueries(SearchEntity entity)
+        {
             IEnumerable<QueryOutput> queryOutputs = GetAllQueryOutputs(entity).ToList();
 
-            List<SearchQuery> searchQueries = new List<SearchQuery>();
+            List<SearchQueryEntity> searchQueries = new List<SearchQueryEntity>();
 
             try
             {
@@ -450,16 +483,16 @@ namespace Microsoft.Azure.Batch.Blast.Searches
 
                 foreach (var task in tasks)
                 {
-                    var queryOutput = GetQueryFilename(entity.OutputfileFormat, task.Id);
-                    var logOutput = GetLogFilename(task.Id);
+                    var queryOutput = GetQueryOutputFilename(entity.OutputfileFormat, task.Id);
+                    var logOutput = GetLogFilename(entity.OutputfileFormat, task.Id);
                     var outputs =
                         queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
                             .ToList();
 
-                    searchQueries.Add(new SearchQuery
+                    searchQueries.Add(new SearchQueryEntity
                     {
                         Id = task.Id,
-                        InputFilename = task.DisplayName,
+                        QueryFilename = task.DisplayName,
                         Outputs = outputs,
                         State = BatchToQueryState(task),
                         StartTime = task.ExecutionInformation?.StartTime,
@@ -470,20 +503,20 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             catch (Exception)
             {
                 var inputFiles = entity.Files;
-                foreach (var queryNumber in Enumerable.Range(0, (int) entity.TotalTasks))
+                foreach (var queryNumber in Enumerable.Range(0, (int)entity.TotalTasks))
                 {
-                    var queryOutput = GetQueryFilename(entity.OutputfileFormat, queryNumber.ToString());
-                    var logOutput = GetLogFilename(queryNumber.ToString());
+                    var queryOutput = GetQueryOutputFilename(entity.OutputfileFormat, queryNumber.ToString());
+                    var logOutput = GetLogFilename(entity.OutputfileFormat, queryNumber.ToString());
                     var outputs =
                         queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
                             .ToList();
 
                     try
                     {
-                        searchQueries.Add(new SearchQuery
+                        searchQueries.Add(new SearchQueryEntity
                         {
                             Id = queryNumber.ToString(),
-                            InputFilename = inputFiles[queryNumber],
+                            QueryFilename = inputFiles[queryNumber],
                             Outputs = outputs,
                             State = QueryState.Success,
                             StartTime = null,
@@ -498,6 +531,25 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             }
 
             return searchQueries;
+        }
+
+        private IEnumerable<SearchQueryEntity> ListV1SearchQueries(SearchEntity entity)
+        {
+            IEnumerable<QueryOutput> queryOutputs = GetAllQueryOutputs(entity).ToList();
+
+            var queries = _tableStorageProvider.ListEntities<SearchQueryEntity>(entity.Id.ToString()).ToList();
+
+            foreach (var searchQueryEntity in queries)
+            {
+                var queryOutput = GetQueryOutputFilename(entity.OutputfileFormat, searchQueryEntity.Id);
+                var logOutput = GetLogFilename(entity.OutputfileFormat, searchQueryEntity.Id);
+                var outputs =
+                    queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
+                        .ToList();
+                searchQueryEntity.Outputs = outputs;
+            }
+
+            return queries;
         }
 
         private QueryState BatchToQueryState(CloudTask task)

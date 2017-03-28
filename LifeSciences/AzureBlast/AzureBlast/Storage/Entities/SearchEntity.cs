@@ -23,6 +23,7 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
         {
             PartitionKey = AllUsersPk;
             RowKey = queryId.ToString();
+            Version = 1;
         }
 
         public Guid Id { get { return Guid.Parse(RowKey); } }
@@ -32,6 +33,8 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
         public Int64 TotalTasks { get; set; }
 
         public Int64 CompletedTasks { get; set; }
+
+        public int Version { get; set; }
 
         public string InputContainer { get; set; }
 

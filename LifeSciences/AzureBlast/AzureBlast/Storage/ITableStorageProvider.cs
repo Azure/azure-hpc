@@ -10,6 +10,8 @@ namespace Microsoft.Azure.Batch.Blast.Storage
     {
         void InsertEntity<T>(T entity) where T : TableEntity;
 
+        void InsertEntities<T>(IEnumerable<T> entities) where T : TableEntity;
+
         void UpdateEntity<T>(T entity) where T : TableEntity;
 
         void UpsertEntity<T>(T entity) where T : TableEntity;

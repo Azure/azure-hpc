@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
 
         IEnumerable<SearchEntity> ListSearches();
 
-        IEnumerable<SearchQuery> ListSearchQueries(Guid searchId);
+        IEnumerable<SearchQueryEntity> ListSearchQueries(Guid searchId);
 
         string GetSearchQueryOutput(Guid searchId, string queryId, string filename);
     }
