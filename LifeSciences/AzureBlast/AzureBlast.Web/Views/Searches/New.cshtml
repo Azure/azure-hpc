@@ -290,6 +290,7 @@
                     $.ajax({
                         type: 'POST',
                         url: '/api/searches',
+                        timeout: 600000, // 10 minutes
                         contentType: false,
                         processData: false,
                         dataType: 'json',
