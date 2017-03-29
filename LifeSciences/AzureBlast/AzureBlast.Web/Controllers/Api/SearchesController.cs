@@ -96,6 +96,8 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 throw new HttpResponseException(HttpStatusCode.UnsupportedMediaType);
             }
 
+            HttpContext.Current.Server.ScriptTimeout = 900;
+
             var root = HttpContext.Current.Server.MapPath("~/App_Data");
             var provider = new MultipartFormDataStreamProvider(root);
 
