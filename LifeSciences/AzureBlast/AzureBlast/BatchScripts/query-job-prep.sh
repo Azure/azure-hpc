@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-set -e
 
 DATABASE_NAME=$1
 if [ -n "$AZ_BLAST_DATABASE_NAME" ]; then
@@ -52,8 +51,24 @@ sudo -H pip3 install --upgrade azure-batch
 # Resize the tmpfs ram disk
 total_mem=`free -m | awk '/Mem:/ {print $2}'`
 tmpfs_mem=$((total_mem - OS_MEMORY))
-sudo mount -o remount,size=${tmpfs_mem}M /dev/shm
-df -h # debug
+if [ $tmpfs_mem -gt 1024 ]; then
+    sudo mount -o remount,size=${tmpfs_mem}M /dev/shm
+    if [ $? -ne 0 ]; then
+        python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "Error" "Error updating tmpfs"
+        exit 1
+    fi
+    df -h # debug
+fi
+
+python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "DownloadingDatabase"
 
 blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$INCLUDE_PATTERN"
-exit $?
+result=$?
+
+if [ $result -eq 0 ]; then
+    python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "Running"
+else
+    python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "Error" "Error downloading database"
+fi
+
+exit $result

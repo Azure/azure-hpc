@@ -6,6 +6,8 @@ namespace Microsoft.Azure.Batch.Blast.Searches
     public enum SearchState
     {
         StagingData,
+        WaitingForResources,
+        DownloadingDatabase,
         Running,
         Complete,
         Canceled,

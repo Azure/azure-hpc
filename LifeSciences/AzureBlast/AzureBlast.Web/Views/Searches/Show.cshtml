@@ -135,52 +135,51 @@
     </script>
 
     <script>
-    $(function () {
+        $(function() {
 
-        if ('@Model.State' !== 'Running') {
-            $('#cancelBtn').addClass('disabled');
-        }
-
-        $('#deleteBtn').click(function () {
-            if (confirm("Are you sure you want to delete the search: @Model.Name?")) {
-                $.ajax({
-                    type: 'DELETE',
-                    url: '/api/searches/@Model.Id',
-                    success: function () {
-                        window.location.href = "/Searches";
-                    },
-                    error: function (response) {
-                        console.error("Failed to delete: ", response);
-                    }
-                });
+            if (!isInProgress(@Model.State)) {
+                $('#cancelBtn').addClass('disabled');
             }
-        });
 
-        $('#cancelBtn').click(function () {
-            if (confirm("Are you sure you want to cancel the search: @Model.Name?")) {
-                $.ajax({
-                    type: 'POST',
-                    url: '/api/searches/@Model.Id/actions/cancel',
-                        success: function () {
-                            location.reload(true);
+            $('#deleteBtn').click(function() {
+                if (confirm("Are you sure you want to delete the search: @Model.Name?")) {
+                    $.ajax({
+                        type: 'DELETE',
+                        url: '/api/searches/@Model.Id',
+                        success: function() {
+                            window.location.href = "/Searches";
                         },
-                        error: function (response) {
+                        error: function(response) {
                             console.error("Failed to delete: ", response);
                         }
                     });
                 }
+            });
+
+            $('#cancelBtn').click(function() {
+                if (confirm("Are you sure you want to cancel the search: @Model.Name?")) {
+                    $.ajax({
+                        type: 'POST',
+                        url: '/api/searches/@Model.Id/actions/cancel',
+                        success: function() {
+                            location.reload(true);
+                        },
+                        error: function(response) {
+                            console.error("Failed to delete: ", response);
+                        }
+                    });
+                }
+            });
+
+            updateSearch();
+            loadQueries();
         });
-
-        updateSearch();
-        loadQueries();
-
-    });
 
         function updateSearch() {
 
             console.log("loading search...");
 
-            $.get('/api/searches/@Model.Id', null, function (search) {
+            $.get('/api/searches/@Model.Id', null, function(search) {
 
                 $('#searchState').text(search._State);
                 $('#searchStartTime').text(formatDate(new Date(search.startTime)));
@@ -204,17 +203,20 @@
                     $('#searchErrorsDiv').removeClass('hidden');
                 }
 
-                if (search._State === null || search._State === 'StagingData' || search._State === 'Running') {
+                if (isInProgress(search._State)) {
                     setTimeout(updateSearch, 5000);
                 }
 
-            }).error(function (data) {
+            }).error(function(data) {
                 if (data.status === 403) {
                     console.debug("Authentication error, reloading page to refresh token.");
                     window.location.reload(true);
                 } else {
                     alert("Error getting search\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
                     console.error(data);
+                    if (isInProgress(search._State)) {
+                        setTimeout(updateSearch, 5000);
+                    }
                 }
             });
         }
@@ -223,15 +225,15 @@
 
             console.log("loading queries...");
 
-            $.get('/api/searches/@Model.Id/queries', null, function (searchQueries) {
+            $.get('/api/searches/@Model.Id/queries', null, function(searchQueries) {
 
-            $('progress').hide();
+                $('progress').hide();
 
-            var filenameRegex = /\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/;
+                var filenameRegex = /\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/;
 
                 var html = "";
 
-                $.map(searchQueries, function (query) {
+                $.map(searchQueries, function(query) {
 
                     var hasXmlOutput = false;
                     var resultsXmlFile = "";
@@ -266,21 +268,35 @@
                 $("#resultTableBody").empty();
                 $('#resultTableBody').append(html);
 
-        }).error(function (data) {
-            if (data.status === 403) {
-                console.debug("Authentication error, reloading page to refresh token.");
-                window.location.reload(true);
-            } else {
-                alert("Error getting search queries\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
-                console.error(data);
-            }
-        });
+                // Whether success or error, reload
+                var searchState = $('#searchState').text();
+                if (isInProgress(searchState)) {
+                    setTimeout(loadQueries, 5000);
+                }
 
-        // Whether success or error, reload
-        var searchState = $('#searchState').text();
-        if (searchState === null || searchState === 'StagingData' || searchState === 'Running') {
-            setTimeout(loadQueries, 3000);
+            }).error(function(data) {
+                if (data.status === 403) {
+                    console.debug("Authentication error, reloading page to refresh token.");
+                    window.location.reload(true);
+                } else {
+                    alert("Error getting search queries\nstatusCode=" + data.status + "\nresponseText=" + data.responseText);
+                    console.error(data);
+
+                    // Whether success or error, reload
+                    var searchState = $('#searchState').text();
+                    if (isInProgress(searchState)) {
+                        setTimeout(loadQueries, 5000);
+                    }
+                }
+            });
         }
-    }
+
+        function isInProgress(searchState) {
+            return searchState === null ||
+                searchState === 'StagingData' ||
+                searchState === 'WaitingForResources' ||
+                searchState === 'DownloadingDatabase' ||
+                searchState === 'Running';
+        }
 </script>
 }

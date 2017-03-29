@@ -88,7 +88,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 var resourceFiles = InputFileStager.StageImportScripts(_blobStorageProvider);
                 SubmitBatchJob(searchEntity, searchQueries, resourceFiles);
 
-                searchEntity.State = SearchState.Running;
+                searchEntity.State = SearchState.WaitingForResources;
                 _tableStorageProvider.UpdateEntity(searchEntity);
             }
             catch (Exception e)

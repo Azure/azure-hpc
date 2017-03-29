@@ -189,6 +189,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BatchScripts\updatestate.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="BatchScripts\SearchJobManager.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
