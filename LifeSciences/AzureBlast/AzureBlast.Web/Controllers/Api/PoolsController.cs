@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Web.Http;
 using Microsoft.Azure.Batch;
@@ -41,7 +42,11 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 poolSpec.VirtualMachineSize,
                 _configuration.GetVirtualMachineConfiguration(),
                 poolSpec.TargetDedicated);
-            pool.MaxTasksPerComputeNode = _configuration.GetCoresForVirtualMachineSize(poolSpec.VirtualMachineSize);
+
+            // Need to always ensure a JM can run
+            pool.MaxTasksPerComputeNode = Math.Max(2,
+                _configuration.GetCoresForVirtualMachineSize(poolSpec.VirtualMachineSize));
+
             pool.Commit();
         }
 
