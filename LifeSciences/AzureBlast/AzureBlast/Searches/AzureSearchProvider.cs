@@ -168,9 +168,13 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             }
             else
             {
-                // Need to always ensure a JM can run
-                var maxTasksPerNode = Math.Max(2,
-                    _configuration.GetCoresForVirtualMachineSize(searchEntity.VirtualMachineSize));
+                var maxTasksPerNode = _configuration.GetCoresForVirtualMachineSize(searchEntity.VirtualMachineSize);
+
+                if (searchEntity.TargetDedicated == 1 && maxTasksPerNode == 1)
+                {
+                    // Need to always ensure a JM can run
+                    maxTasksPerNode = 2;
+                }
 
                 poolInfo = new PoolInformation
                 {

@@ -42,10 +42,13 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
                 poolSpec.VirtualMachineSize,
                 _configuration.GetVirtualMachineConfiguration(),
                 poolSpec.TargetDedicated);
+            pool.MaxTasksPerComputeNode = _configuration.GetCoresForVirtualMachineSize(poolSpec.VirtualMachineSize);
 
-            // Need to always ensure a JM can run
-            pool.MaxTasksPerComputeNode = Math.Max(2,
-                _configuration.GetCoresForVirtualMachineSize(poolSpec.VirtualMachineSize));
+            if (pool.TargetDedicated == 1 && pool.MaxTasksPerComputeNode == 1)
+            {
+                // Need to always ensure a JM can run
+                pool.MaxTasksPerComputeNode = 2;
+            }
 
             pool.Commit();
         }
