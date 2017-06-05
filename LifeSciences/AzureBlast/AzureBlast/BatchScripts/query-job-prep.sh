@@ -45,8 +45,8 @@ sudo apt-get update
 sudo apt-get install -y build-essential libssl-dev libffi-dev libpython3-dev python3-dev python3-pip wget curl ncbi-blast+
 sudo -H pip3 install --upgrade pip
 sudo -H pip3 install --upgrade blobxfer
-sudo -H pip3 install --upgrade azure-storage
-sudo -H pip3 install --upgrade azure-batch
+sudo -H pip3 install --upgrade azure-storage==0.34.2
+sudo -H pip3 install --upgrade azure-batch==3.0.0
 
 # Resize the tmpfs ram disk
 total_mem=`free -m | awk '/Mem:/ {print $2}'`
@@ -64,6 +64,31 @@ python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_J
 
 blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$INCLUDE_PATTERN"
 result=$?
+
+# Here we check to see if the database has an alias file, if so
+# then we need to try and download the referenced databases
+aliases=""
+if [ -e "$DATABASE_LOCATION/$DATABASE_NAME/$DATABASE_NAME.nal" ]; then
+    aliases="`cat $DATABASE_LOCATION/$DATABASE_NAME/$DATABASE_NAME.nal | grep '^DBLIST' | sed 's/DBLIST//g' | sed 's/"//g'`"
+elif [ -e "$DATABASE_LOCATION/$DATABASE_NAME/$DATABASE_NAME.pal" ]; then
+    aliases="`cat $DATABASE_LOCATION/$DATABASE_NAME/$DATABASE_NAME.pal | grep '^DBLIST' | sed 's/DBLIST//g' | sed 's/"//g'`"
+fi
+
+if [ -n "$aliases" ]; then
+    for db in $aliases; do
+        ls $DATABASE_LOCATION/$DATABASE_NAME/$db.* > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            # No local database failes, lets download them
+            echo "Downloading database alias $db"
+	        blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$db.*"
+            result=$?
+            if [ $result -ne 0 ]; then
+                echo "Failed to download database alias $db"
+                #break
+            fi
+        fi
+    done
+fi
 
 if [ $result -eq 0 ]; then
     python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "Running"

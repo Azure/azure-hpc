@@ -39,17 +39,15 @@ def wait_for_tasks_to_complete(
         entity = table_service.get_entity(
             'SearchEntity', entity_pk, entity_rk)
 
-        tasks = batch_client.task.list(job_id)
+        tasks = [task for task in batch_client.task.list(job_id) if task.id != "JobManager"]
 
         incomplete_tasks = [task for task in tasks if
-                            task.id != 'JobManager' and
                             task.state != batchmodels.TaskState.completed]
         complete_tasks = [task for task in tasks if
-                            task.id != 'JobManager' and
                             task.state == batchmodels.TaskState.completed]
         failed_tasks = [task for task in complete_tasks if
                             task.execution_info.exit_code != 0 or
-                            task.execution_info.scheduling_error is not None]
+                            task.execution_info.result is batchmodels.TaskExecutionResult.failure]
 
         queries = table_service.query_entities(
             'SearchQueryEntity',

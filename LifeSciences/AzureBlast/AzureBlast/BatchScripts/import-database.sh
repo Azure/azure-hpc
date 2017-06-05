@@ -30,6 +30,8 @@ if [ -n "$AZ_BLAST_DATABASE_SEGMENT" ]; then
     DATABASE_SEGMENT=$AZ_BLAST_DATABASE_SEGMENT
 fi
 
+ALIASED_DATABASES=""
+
 NCBI_URL="ftp://ftp.ncbi.nlm.nih.gov/blast/db/"
 
 function download_db_file()
@@ -90,7 +92,7 @@ if [ -n "$DATABASE_SEGMENT" ]; then
     db_files=$DATABASE_SEGMENT
 else
     # List database files
-    db_files=`curl -s -l $NCBI_URL | grep -v .md5$ | grep ^$DATABASE_NAME`
+    db_files=`curl -s -l $NCBI_URL | grep -v .md5$ | grep ^${DATABASE_NAME}.`
     if [ $? -ne 0 ]; then
         echo "Error listing databases"
         exit 1
