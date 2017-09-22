@@ -1,0 +1,17 @@
+{
+    "job_specifications": [
+        {
+            "id": "samtoolsjob",
+			"tasks": [
+                {
+                    "image": "biocontainers/samtools",
+                    "shared_data_volumes": ["azurefilevol"],
+					"remove_container_after_exit": true,
+                    "command": "/home/bizdata/fileshare/example/jobrun.sh"
+                }
+            ]
+        }
+    ]
+}
+
+

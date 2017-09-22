@@ -1,0 +1,17 @@
+{
+    "job_specifications": [
+        {
+            "id": "<your job name?",
+			"tasks": [
+                {
+                    "image": "<docker image to be used>",
+                    "shared_data_volumes": ["azurefilevol"],
+					"remove_container_after_exit": true,
+                    "command": "/command/to/executeonthefileshare.sh"
+                }
+            ]
+        }
+    ]
+}
+
+
