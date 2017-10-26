@@ -250,13 +250,20 @@
       "imagePublisher":"[split(parameters('image'), ':')[0]]",
       "imageOffer":"[split(parameters('image'), ':')[1]]",
       "imageSku":"[split(parameters('image'), ':')[2]]",
+      "newStorageAccountName":"[concat(uniqueString(resourceGroup().id), 'sa')]",
+      "storageAccountName1":"[concat(uniqueString('1', resourceGroup().id), 'sa')]",
+      "storageAccountName2":"[concat(uniqueString('2', resourceGroup().id), 'sa')]",
+      "storageAccountName3":"[concat(uniqueString('3', resourceGroup().id), 'sa')]",
+      "storageAccountName4":"[concat(uniqueString('4', resourceGroup().id), 'sa')]",
+      "vmStorageAccountContainerName":"vhd",
+      "OSDiskName":"osdisk",
       "publicIPAddressType":"Dynamic",
-      "publicIPAddressName":"PublicIP",
+      "publicIPAddressName":"publicips",
       "masterVMName":"master",
       "workerVMName":"worker",
       "armApiVersion":"2015-06-15",
       "computeApiVersion":"2016-04-30-preview",
-      "avSetName":"AvSet",
+      "avSetName":"avSet",
       "masterDiskCount":4,
       "workerDiskCount":4,
       "nicName":"nic",
@@ -356,7 +363,7 @@
       {
          "apiVersion":"[variables('armApiVersion')]",
          "type":"Microsoft.Network/networkInterfaces",
-         "name":"[concat(variables('nicName'), 'master')]",
+         "name":"[variables('nicName')]",
          "location":"[resourceGroup().location]",
          "dependsOn":[
             "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
@@ -402,7 +409,6 @@
          }
       },
       {
-         "condition": "[equals(variables('clusterFilesystem'), 'BeeGFS')]",
          "type":"Microsoft.Compute/disks",
          "name":"[concat('workerdatadisk', copyindex())]",
          "apiVersion":"[variables('computeApiVersion')]",
@@ -425,7 +431,7 @@
          "name":"[variables('masterVMName')]",
          "location":"[resourceGroup().location]",
          "dependsOn":[
-            "[concat('Microsoft.Network/networkInterfaces/', concat(variables('nicName'), 'master'))]",
+            "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]",
             "[concat('Microsoft.Compute/availabilitySets/', variables('avSetName'))]",
             "Microsoft.Compute/disks/masterdatadisk0",
             "Microsoft.Compute/disks/masterdatadisk1",
@@ -488,7 +494,7 @@
             "networkProfile":{
                "networkInterfaces":[
                   {
-                     "id":"[resourceId('Microsoft.Network/networkInterfaces', concat(variables('nicName'), 'master'))]"
+                     "id":"[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
                   }
                ]
             }
@@ -502,6 +508,31 @@
          "dependsOn":[
             "[concat('Microsoft.Compute/virtualMachines/', variables('masterVMName'))]"
          ],
+         "properties":{
+            "publisher":"Microsoft.OSTCExtensions",
+            "type":"CustomScriptForLinux",
+            "typeHandlerVersion":"1.3",
+            "settings":{
+               "fileUris":[
+                  "[concat(variables('templateBaseUrl'), 'azuredeploy.sh')]"
+               ],
+               "commandToExecute":"[variables('installationCLI')]"
+            }
+         }
+      },
+      {
+         "apiVersion":"[variables('computeApiVersion')]",
+         "type":"Microsoft.Compute/virtualMachines/extensions",
+         "name":"[concat(variables('workerVMName'), copyindex(), '/Installation')]",
+         "location":"[resourceGroup().location]",
+         "dependsOn":[
+            "[concat('Microsoft.Compute/virtualMachines/', variables('masterVMName'), '/extensions/Installation')]",
+            "[concat('Microsoft.Compute/virtualMachines/', variables('workerVMName'), copyindex())]"
+         ],
+         "copy":{
+            "name":"foo",
+            "count":"[parameters('workerNodeCount')]"
+         },
          "properties":{
             "publisher":"Microsoft.OSTCExtensions",
             "type":"CustomScriptForLinux",
@@ -542,7 +573,6 @@
          }
       },
       {
-         "condition": "[equals(variables('clusterFilesystem'), 'BeeGFS')]",
          "apiVersion":"[variables('computeApiVersion')]",
          "type":"Microsoft.Compute/virtualMachines",
          "name":"[concat(variables('workerVMName'), copyindex())]",
@@ -618,77 +648,6 @@
                      "id":"[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'), 'worker', copyindex()))]"
                   }
                ]
-            }
-         }
-      },
-      {
-         "condition": "[equals(variables('clusterFilesystem'), 'None')]",
-         "apiVersion":"[variables('computeApiVersion')]",
-         "type":"Microsoft.Compute/virtualMachines",
-         "name":"[concat(variables('workerVMName'), copyindex())]",
-         "location":"[resourceGroup().location]",
-         "dependsOn":[
-            "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'), 'worker', copyindex())]",
-            "[concat('Microsoft.Compute/availabilitySets/', variables('avSetName'))]"
-         ],
-         "copy":{
-            "name":"foo",
-            "count":"[parameters('workerNodeCount')]"
-         },
-         "properties":{
-            "availabilitySet":{
-               "id":"[resourceId('Microsoft.Compute/availabilitySets', variables('avSetName'))]"
-            },
-            "hardwareProfile":{
-               "vmSize":"[parameters('workerNodeSize')]"
-            },
-            "osProfile":{
-               "computername":"[concat(variables('workerVMName'), copyindex())]",
-               "adminUsername":"[parameters('adminUsername')]",
-               "adminPassword":"[parameters('adminPassword')]"
-            },
-            "storageProfile":{
-               "imageReference":{
-                  "publisher":"[variables('imagePublisher')]",
-                  "offer":"[variables('imageOffer')]",
-                  "sku":"[variables('imageSku')]",
-                  "version":"latest"
-               },
-               "osDisk":{
-                  "createOption":"FromImage"
-               }
-            },
-            "networkProfile":{
-               "networkInterfaces":[
-                  {
-                     "id":"[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'), 'worker', copyindex()))]"
-                  }
-               ]
-            }
-         }
-      },
-      {
-         "apiVersion":"[variables('computeApiVersion')]",
-         "type":"Microsoft.Compute/virtualMachines/extensions",
-         "name":"[concat(variables('workerVMName'), copyindex(), '/Installation')]",
-         "location":"[resourceGroup().location]",
-         "dependsOn":[
-            "[concat('Microsoft.Compute/virtualMachines/', variables('masterVMName'), '/extensions/Installation')]",
-            "[concat('Microsoft.Compute/virtualMachines/', variables('workerVMName'), copyindex())]"
-         ],
-         "copy":{
-            "name":"foo",
-            "count":"[parameters('workerNodeCount')]"
-         },
-         "properties":{
-            "publisher":"Microsoft.OSTCExtensions",
-            "type":"CustomScriptForLinux",
-            "typeHandlerVersion":"1.3",
-            "settings":{
-               "fileUris":[
-                  "[concat(variables('templateBaseUrl'), 'azuredeploy.sh')]"
-               ],
-               "commandToExecute":"[variables('installationCLI')]"
             }
          }
       }
