@@ -5,7 +5,7 @@ import time
 import azure.batch.batch_service_client as batch
 import azure.batch.batch_auth as batchauth
 import azure.batch.models as batchmodels
-from azure.storage.table import TableService
+from azure.cosmosdb.table import TableService
 from azure.storage.blob import BlockBlobService
 
 

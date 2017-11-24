@@ -74,7 +74,7 @@ function import_db_file()
         while [ $attempts -lt 3 ]; do
             retries=$(($attempts+1))
             # Upload the database segment files to blob
-            blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER . --upload --include '*.*'
+            blobxfer upload --storage-account $STORAGE_ACCOUNT --storage-account-key "$BLOBXFER_STORAGEACCOUNTKEY" --remote-path $DATABASE_CONTAINER --local-path . --include '*.*'
             if [ $? -ne 0 ]; then
                 echo "Blob upload failed"
                 sleep 30 # back off for a bit
