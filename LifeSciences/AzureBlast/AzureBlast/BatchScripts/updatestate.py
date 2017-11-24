@@ -1,5 +1,5 @@
 import sys
-from azure.storage.table import TableService
+from azure.cosmosdb.table import TableService
 
 
 if __name__ == '__main__':
@@ -18,10 +18,9 @@ if __name__ == '__main__':
     entity = table_service.get_entity('SearchEntity', entity_pk, entity_rk)
 
     try:
-        if entity._State == 'WaitingForResources':
-            entity._State = state
-            if error:
-                entity.Errors = error
-            table_service.update_entity('SearchEntity', entity, if_match=entity.etag)
+        entity._State = state
+        if error:
+            entity.Errors = error
+        table_service.update_entity('SearchEntity', entity, if_match=entity.etag)
     except Exception as e:
         print('Error updating entityt {}'.format(e))

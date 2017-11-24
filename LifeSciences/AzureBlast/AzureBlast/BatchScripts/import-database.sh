@@ -34,6 +34,10 @@ ALIASED_DATABASES=""
 
 NCBI_URL="ftp://ftp.ncbi.nlm.nih.gov/blast/db/"
 
+# Required for blobxfer
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 function download_db_file()
 {
     file=$1

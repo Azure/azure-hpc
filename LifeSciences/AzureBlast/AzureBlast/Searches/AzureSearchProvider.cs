@@ -318,7 +318,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
         private string GetUploadCommandLine(string outputContainer)
         {
             return string.Format(
-                "blobxfer {0} {1} . --upload --include \"*\"",
+                "export LC_ALL=C.UTF-8; export LANG=C.UTF-8; blobxfer upload --storage-account {0} --storage-account-key \"$BLOBXFER_STORAGEACCOUNTKEY\" --remote-path {1} --local-path . --include \"*\"",
                 _storageCredentials.Account,
                 outputContainer);
         }

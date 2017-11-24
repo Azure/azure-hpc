@@ -40,12 +40,16 @@ if [ -n "$AZ_BLAST_OS_MEMORY" ]; then
     OS_MEMORY=$$AZ_BLAST_OS_MEMORY
 fi
 
+# Required for blobxfer
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 # Install pre req packages
 sudo apt-get update
 sudo apt-get install -y build-essential libssl-dev libffi-dev libpython3-dev python3-dev python3-pip wget curl ncbi-blast+
 sudo -H pip3 install --upgrade pip
-sudo -H pip3 install --upgrade blobxfer
-sudo -H pip3 install --upgrade azure-storage==0.34.2
+sudo -H pip3 install --upgrade blobxfer==1.0.0
+sudo -H pip3 install --upgrade azure-cosmosdb-table==1.0.0
 sudo -H pip3 install --upgrade azure-batch==3.0.0
 
 # Resize the tmpfs ram disk
@@ -62,7 +66,8 @@ fi
 
 python3 updatestate.py "$STORAGE_ACCOUNT" "$STORAGE_KEY" "allusers" "$AZ_BATCH_JOB_ID" "DownloadingDatabase"
 
-blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$INCLUDE_PATTERN"
+blobxfer download --storage-account "$STORAGE_ACCOUNT" --storage-account-key "$BLOBXFER_STORAGEACCOUNTKEY" --remote-path "$DATABASE_CONTAINER" --include "$INCLUDE_PATTERN" --local-path "$DATABASE_LOCATION/$DATABASE_NAME"
+
 result=$?
 
 # Here we check to see if the database has an alias file, if so
@@ -80,7 +85,7 @@ if [ -n "$aliases" ]; then
         if [ $? -ne 0 ]; then
             # No local database failes, lets download them
             echo "Downloading database alias $db"
-	        blobxfer $STORAGE_ACCOUNT $DATABASE_CONTAINER "$DATABASE_LOCATION/$DATABASE_NAME" --download --remoteresource . --include "$db.*"
+            blobxfer download --storage-account $STORAGE_ACCOUNT --storage-account-key $BLOBXFER_STORAGEACCOUNTKEY --remote-path "$DATABASE_CONTAINER" --include "$db.*" --local-path "$DATABASE_LOCATION/$DATABASE_NAME"
             result=$?
             if [ $result -ne 0 ]; then
                 echo "Failed to download database alias $db"
