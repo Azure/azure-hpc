@@ -128,7 +128,15 @@
          "type":"Microsoft.Batch/batchAccounts",
          "name":"[variables('batchAccountName')]",
          "apiVersion":"[variables('batchApiVersion')]",
-         "location":"[resourceGroup().location]"
+         "location":"[resourceGroup().location]",
+         "dependsOn":[
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+         ],
+         "properties": {
+            "autoStorage": {
+               "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            }
+         }
       },
       {
          "apiVersion":"[variables('webSitesApiVersion')]",

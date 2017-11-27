@@ -13,6 +13,7 @@ using Microsoft.Azure.Batch.Blast.Databases;
 using Microsoft.Azure.Batch.Blast.Storage;
 using Microsoft.Azure.Batch.Blast.Storage.Entities;
 using Microsoft.Azure.Batch.Common;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Batch.Blast.Searches
 {
@@ -134,8 +135,8 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             var searchEntity = new SearchEntity(queryId);
             searchEntity.Name = search.Name;
             searchEntity.JobId = queryId.ToString();
-            searchEntity.InputContainer = queryId.ToString();
-            searchEntity.OutputContainer = queryId.ToString();
+            searchEntity.InputContainer = "job-" + queryId.ToString();
+            searchEntity.OutputContainer = "job-" + queryId.ToString();
             searchEntity.DatabaseId = search.DatabaseName;
             searchEntity.DatabaseType = database.Type;
             searchEntity.DatabaseContainer = database.ContainerName;
@@ -196,11 +197,10 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             var job = _batchClient.JobOperations.CreateJob(searchEntity.JobId, poolInfo);
             job.DisplayName = searchEntity.DatabaseId;
             job.JobPreparationTask = GetJobPreparationTask(
-                searchEntity.DatabaseId,
-                searchEntity.DatabaseContainer,
+                searchEntity,
                 resourceFiles);
             job.JobManagerTask = GetJobManagerTask(
-                searchEntity.Id.ToString(),
+                searchEntity,
                 resourceFiles);
             job.Commit();
 
@@ -217,9 +217,8 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             var taskId = 0;
             foreach (var query in queries)
             {
-                var cmd = string.Format("/bin/bash -c '{0}; result=$?; {1}; exit $result'",
-                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgsSanitised, query.QueryFilename, query.QueryOutputFilename, query.LogOutputFilename),
-                    GetUploadCommandLine(searchEntity.OutputContainer));
+                var cmd = string.Format("/bin/bash -c '{0}; result=$?; exit $result'",
+                    GetBlastCommandLine(searchEntity.DatabaseId, searchEntity.Executable, searchEntity.ExecutableArgsSanitised, query.QueryFilename, query.QueryOutputFilename, query.LogOutputFilename));
 
                 var task = new CloudTask(taskId.ToString(), cmd);
                 task.DisplayName = query.QueryFilename;
@@ -232,6 +231,29 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 task.EnvironmentSettings = new[]
                 {
                     new EnvironmentSetting("BLOBXFER_STORAGEACCOUNTKEY", _storageCredentials.Key),
+                };
+
+                var containerSasUrl = GetOutputContainerSas(searchEntity.OutputContainer);
+                var outputPath = string.Format("{0}/$TaskOutput/{1}", taskId, query.QueryOutputFilename);
+                var logPath = string.Format("{0}/$TaskLog/{1}", taskId, query.LogOutputFilename);
+                var stdoutPath = string.Format("{0}/$TaskLog", taskId);
+
+                task.OutputFiles = new List<OutputFile>
+                {
+                    new OutputFile("../*.txt",
+                        new OutputFileDestination(
+                            new OutputFileBlobContainerDestination(containerSasUrl, stdoutPath)),
+                        new OutputFileUploadOptions(OutputFileUploadCondition.TaskCompletion)),
+
+                    new OutputFile(query.LogOutputFilename,
+                        new OutputFileDestination(
+                            new OutputFileBlobContainerDestination(containerSasUrl, logPath)),
+                        new OutputFileUploadOptions(OutputFileUploadCondition.TaskCompletion)),
+
+                    new OutputFile(query.QueryOutputFilename,
+                        new OutputFileDestination(
+                            new OutputFileBlobContainerDestination(containerSasUrl, outputPath)),
+                        new OutputFileUploadOptions(OutputFileUploadCondition.TaskCompletion)),
                 };
 
                 yield return task;
@@ -315,15 +337,21 @@ namespace Microsoft.Azure.Batch.Blast.Searches
             searchEntity.OutputfileFormat = outputFormat;
         }
 
-        private string GetUploadCommandLine(string outputContainer)
+        private string GetUploadCommandLine(string remotePath, string localPath, string includePattern = null)
         {
+            var includeArg = string.IsNullOrEmpty(includePattern) ? "--rename" : string.Format("--include \"{0}\"", includePattern);
+
             return string.Format(
-                "export LC_ALL=C.UTF-8; export LANG=C.UTF-8; blobxfer upload --storage-account {0} --storage-account-key \"$BLOBXFER_STORAGEACCOUNTKEY\" --remote-path {1} --local-path . --include \"*\"",
+                "export LC_ALL=C.UTF-8; " +
+                "export LANG=C.UTF-8; " +
+                "blobxfer upload --storage-account {0} --storage-account-key \"$BLOBXFER_STORAGEACCOUNTKEY\" --remote-path {1} --local-path {2} {3}",
                 _storageCredentials.Account,
-                outputContainer);
+                remotePath,
+                localPath,
+                includeArg);
         }
 
-        public JobManagerTask GetJobManagerTask(string searchId, List<ResourceFile> resourceFiles)
+        public JobManagerTask GetJobManagerTask(SearchEntity searchEntity, List<ResourceFile> resourceFiles)
         {
             var cmd =
                 string.Format("/bin/bash -c 'python3 SearchJobManager.py {0} {1} {2} {3} {4} {5} {6} {7}'",
@@ -334,7 +362,11 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 _batchCredentials.Url,
                 "$AZ_BATCH_JOB_ID",
                 SearchEntity.AllUsersPk, // PK for JobMananger
-                searchId); // RK for JobManager
+                searchEntity.Id); // RK for JobManager
+
+            var containerSasUrl = GetOutputContainerSas(searchEntity.OutputContainer);
+            var stdoutPath = "JobManager/$TaskLog/stdout.txt";
+            var stderrPath = "JobManager/$TaskLog/stderr.txt";
 
             return new JobManagerTask
             {
@@ -344,24 +376,49 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 UserIdentity = new UserIdentity(new AutoUserSpecification(elevationLevel: ElevationLevel.Admin)),
                 ResourceFiles = resourceFiles,
                 Constraints = new TaskConstraints(null, null, 5),
+                EnvironmentSettings = new[]
+                {
+                    new EnvironmentSetting("BLOBXFER_STORAGEACCOUNTKEY", _storageCredentials.Key),
+                },
                 KillJobOnCompletion = true,
+                OutputFiles = new List<OutputFile>
+                {
+                    new OutputFile("../stdout.txt",
+                        new OutputFileDestination(
+                            new OutputFileBlobContainerDestination(containerSasUrl, stdoutPath)),
+                        new OutputFileUploadOptions(OutputFileUploadCondition.TaskCompletion)),
+
+                    new OutputFile("../stderr.txt",
+                        new OutputFileDestination(
+                            new OutputFileBlobContainerDestination(containerSasUrl, stderrPath)),
+                        new OutputFileUploadOptions(OutputFileUploadCondition.TaskCompletion)),
+                }
             };
         }
 
-        public JobPreparationTask GetJobPreparationTask(string databaseName, string databaseContainer, List<ResourceFile> resourceFiles)
+        public JobPreparationTask GetJobPreparationTask(SearchEntity searchEntity, List<ResourceFile> resourceFiles)
         {
-            var cmd = string.Format("/bin/bash -c 'query-job-prep.sh {0} {1} {2} {3}'",
-                databaseName,
+            var stdoutLogUploadCmd = GetUploadCommandLine(searchEntity.OutputContainer + "/JobPrep/\\$TaskLog/stdout-$AZ_BATCH_NODE_ID.txt", "../stdout.txt");
+            var stderrLogUploadCmd = GetUploadCommandLine(searchEntity.OutputContainer + "/JobPrep/\\$TaskLog/stderr-$AZ_BATCH_NODE_ID.txt", "../stderr.txt");
+
+            var cmd = string.Format("/bin/bash -c 'query-job-prep.sh {0} {1} {2} {3}; {4}; {5}'",
+                searchEntity.DatabaseId,
                 _storageCredentials.Account,
                 _storageCredentials.Key,
-                databaseContainer);
+                searchEntity.DatabaseContainer,
+                stdoutLogUploadCmd,
+                stderrLogUploadCmd);
 
             return new JobPreparationTask
             {
+                Id = "JobPrep",
                 CommandLine = cmd,
+                EnvironmentSettings = new[]
+                {
+                    new EnvironmentSetting("BLOBXFER_STORAGEACCOUNTKEY", _storageCredentials.Key),
+                },
                 ResourceFiles = resourceFiles,
                 UserIdentity = new UserIdentity(new AutoUserSpecification(elevationLevel: ElevationLevel.Admin)),
-
             };
         }
 
@@ -428,6 +485,14 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 }
             }
 
+            var queries = _tableStorageProvider.ListEntities<SearchQueryEntity>(entity.RowKey);
+
+            if (queries != null)
+            Parallel.ForEach(queries, q =>
+            {
+                _tableStorageProvider.DeleteEntity(q);
+            });
+
             _tableStorageProvider.DeleteEntity(entity);
         }
 
@@ -466,7 +531,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 return ListLegacySearchQueries(entity);
             }
 
-            if (entity.Version == 1)
+            if (entity.Version == 1 || entity.Version == 2)
             {
                 return ListV1SearchQueries(entity);
             }
@@ -548,7 +613,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                 var queryOutput = GetQueryOutputFilename(entity.OutputfileFormat, searchQueryEntity.Id);
                 var logOutput = GetLogFilename(entity.OutputfileFormat, searchQueryEntity.Id);
                 var outputs =
-                    queryOutputs.Where(output => output.Filename == queryOutput || output.Filename == logOutput)
+                    queryOutputs.Where(output => output.Filename.EndsWith(queryOutput) || output.Filename.EndsWith(logOutput))
                         .ToList();
                 searchQueryEntity.Outputs = outputs;
             }
@@ -584,7 +649,7 @@ namespace Microsoft.Azure.Batch.Blast.Searches
 
             var blobs = _blobStorageProvider.ListBlobs(entity.OutputContainer);
 
-            var blob = blobs.FirstOrDefault(b => b.BlobName == filename);
+            var blob = blobs.FirstOrDefault(b => b.BlobName.EndsWith(filename));
 
             if (blob == null)
             {
@@ -602,10 +667,26 @@ namespace Microsoft.Azure.Batch.Blast.Searches
                         blob =>
                             new QueryOutput
                             {
-                                Filename = blob.BlobName,
+                                Filename = Path.GetFileName(blob.BlobName),
+                                AbsoluteFilePath = blob.BlobName,
                                 Url = _blobStorageProvider.GetBlobSAS(searchEntity.OutputContainer, blob.BlobName),
                                 Length = blob.Length,
                             });
+        }
+
+        private string GetOutputContainerSas(string outputContainer)
+        {
+            var container = _blobStorageProvider.GetContainer(outputContainer);
+            container.CreateIfNotExists();
+            var sas = container.GetSharedAccessSignature(new SharedAccessBlobPolicy
+            {
+                Permissions = SharedAccessBlobPermissions.Create | SharedAccessBlobPermissions.Add |
+                              SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Write,
+                SharedAccessStartTime = DateTimeOffset.UtcNow.AddMinutes(-30),
+                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(28),
+            });
+
+            return string.Format("{0}{1}", container.Uri.AbsoluteUri, sas);
         }
     }
 }

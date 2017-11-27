@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
         {
             PartitionKey = AllUsersPk;
             RowKey = queryId.ToString();
-            Version = 1;
+            Version = 2;
         }
 
         public Guid Id { get { return Guid.Parse(RowKey); } }
@@ -113,8 +113,15 @@ namespace Microsoft.Azure.Batch.Blast.Storage.Entities
         public List<string> Files { get; set; }
 
         [IgnoreProperty]
-        public string Duration {
-            get { return EndTime == null ? "" : (EndTime.Value - StartTime).GetFriendlyDuration(); }
+        public string Duration
+        {
+            get
+            {
+                return EndTime == null ? "" : (EndTime.Value - StartTime).GetFriendlyDuration();
+            }
         }
+
+        [IgnoreProperty]
+        public List<string> JobPrepLogs { get; set; }
     }
 }
