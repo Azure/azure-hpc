@@ -92,9 +92,10 @@ namespace VRayPoolManager
                 };
             }
 
+            var portTuple = GetPublicPortRange();
             var inboundNatPools = new List<InboundNatPool>
             {
-                new InboundNatPool("VRay", InboundEndpointProtocol.Tcp, 20207, 20000, 20099, nsgRules)
+                new InboundNatPool("VRay", InboundEndpointProtocol.Tcp, 20207, portTuple.Item1, portTuple.Item2, nsgRules)
             };
 
             pool.NetworkConfiguration = new NetworkConfiguration();
@@ -102,6 +103,8 @@ namespace VRayPoolManager
             pool.InterComputeNodeCommunicationEnabled = true;
             pool.ApplicationLicenses = new List<string> { "3dsmax", "vray" };
             pool.Commit();
+
+            Console.WriteLine("Created pool {0} with {1} compute node(s)", poolName, dedicatedVmCount == 0 ? lowPriorityVmCount : dedicatedVmCount);
 
             var job = Client.JobOperations.CreateJob("vray-dr-" + poolName, new PoolInformation {PoolId = poolName});
             job.Commit();
@@ -111,6 +114,7 @@ namespace VRayPoolManager
 
             var task = new CloudTask("setup-vray-dr", "dir");
             task.MultiInstanceSettings = new MultiInstanceSettings(ConfigurationManager.AppSettings["VRaySetupCommand"], vmCount);
+            task.Constraints = new TaskConstraints(maxTaskRetryCount: 3);
             job.AddTask(task);
 
             Console.WriteLine("Waiting for pool nodes to allocate...");
@@ -133,9 +137,24 @@ namespace VRayPoolManager
                 Environment.Exit(1);
             }
 
-            Console.WriteLine("Endpoints");
+            WriteVRayConfig(pool);
+
+            Console.WriteLine("Waiting for configuration task to complete...");
+            task = Client.JobOperations.GetTask(job.Id, task.Id);
+            while (task.State.Value == TaskState.Active)
+            {
+                Thread.Sleep(15000);
+                task = Client.JobOperations.GetTask(job.Id, task.Id);
+            }
+
+            Console.WriteLine("Done, press any key to exit...");
+            Console.ReadLine();
+        }
+
+        private static void WriteVRayConfig(CloudPool pool)
+        {
             var vrayConfig = Path.Combine(
-                Environment.GetEnvironmentVariable("LOCALAPPDATA"), 
+                Environment.GetEnvironmentVariable("LOCALAPPDATA"),
                 ConfigurationManager.AppSettings["VRayDRConfigPath"],
                 "vray_dr.cfg");
 
@@ -143,6 +162,28 @@ namespace VRayPoolManager
                 Environment.GetEnvironmentVariable("LOCALAPPDATA"),
                 ConfigurationManager.AppSettings["VRayDRConfigPath"],
                 "vrayrt_dr.cfg");
+
+            var vrayConfigContent = ConfigurationManager.AppSettings["VRayDRConfig"];
+            var vrayRtConfigContent = ConfigurationManager.AppSettings["VRayRTDRConfig"];
+
+            // If the config files already exist, preserve their content
+            if (File.Exists(vrayConfig))
+            {
+                var content = File.ReadAllText(vrayConfig);
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    vrayConfigContent = content;
+                }
+            }
+
+            if (File.Exists(vrayRtConfig))
+            {
+                var content = File.ReadAllText(vrayRtConfig);
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    vrayRtConfigContent = content;
+                }
+            }
 
             File.WriteAllText(vrayConfig, "");
             File.WriteAllText(vrayRtConfig, "");
@@ -155,27 +196,55 @@ namespace VRayPoolManager
                         if (endpoint.Name.StartsWith("VRay"))
                         {
                             Console.WriteLine("    {0} {1}:{2}", computeNode.Id, endpoint.PublicIPAddress, endpoint.FrontendPort);
-                            File.AppendAllText(vrayConfig, string.Format("{0} 1 {1}\n", endpoint.PublicIPAddress, endpoint.FrontendPort));
-                            File.AppendAllText(vrayRtConfig, string.Format("{0} 1 {1}\n", endpoint.PublicIPAddress, endpoint.FrontendPort));
+
+                            var computeNodeEntry = string.Format("{0} 1 {1}\n", endpoint.PublicIPAddress, endpoint.FrontendPort);
+                            if (vrayConfigContent.Contains(computeNodeEntry))
+                            {
+                                Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayConfig);
+                            }
+                            else
+                            {
+                                File.AppendAllText(vrayConfig, computeNodeEntry);
+                            }
+
+                            if (vrayRtConfigContent.Contains(computeNodeEntry))
+                            {
+                                Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayRtConfigContent);
+                            }
+                            else
+                            {
+                                File.AppendAllText(vrayRtConfig, computeNodeEntry);
+                            }
                         }
                     }
                 }
             }
-            File.AppendAllText(vrayConfig, ConfigurationManager.AppSettings["VRayDRConfig"]);
-            File.AppendAllText(vrayRtConfig, ConfigurationManager.AppSettings["VRayRTDRConfig"]);
+
+            File.AppendAllText(vrayConfig, vrayConfigContent);
+            File.AppendAllText(vrayRtConfig, vrayRtConfigContent);
+
             Console.WriteLine("Updated VRay DR config file: " + vrayConfig);
             Console.WriteLine("Updated VRayRT DR config file: " + vrayConfig);
+        }
 
-            Console.WriteLine("Waiting for configuration task to complete...");
-            task = Client.JobOperations.GetTask(job.Id, task.Id);
-            while (task.State.Value == TaskState.Active)
+        private static Tuple<int, int> GetPublicPortRange()
+        {
+            var portRangeSetting = ConfigurationManager.AppSettings["PublicPortRange"];
+            if (string.IsNullOrWhiteSpace(portRangeSetting) || !portRangeSetting.Contains(":"))
             {
-                Thread.Sleep(15000);
-                task = Client.JobOperations.GetTask(job.Id, task.Id);
+                portRangeSetting = "20000:20099";
+                Console.WriteLine("Empty or invalid port range specified, falling back to default " + portRangeSetting);
             }
 
-            Console.WriteLine("Done");
-            Console.ReadLine();
+            try
+            {
+                var tokens = portRangeSetting.Split(':');
+                return Tuple.Create<int, int>(int.Parse(tokens[0]), int.Parse(tokens[1]));
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Invalid port range specified: " + portRangeSetting + ", please specify a port range in the format 20000:20099");
+            }
         }
 
         private static void DeletePool(string poolName)
