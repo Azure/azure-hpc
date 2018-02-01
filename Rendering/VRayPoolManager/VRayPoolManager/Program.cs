@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
 namespace VRayPoolManager
 {
@@ -18,11 +19,7 @@ namespace VRayPoolManager
 
         static void Main(string[] args)
         {
-            Client = BatchClient.Open(
-                new BatchSharedKeyCredentials(
-                    ConfigurationManager.AppSettings["BatchUrl"], 
-                    ConfigurationManager.AppSettings["BatchAccount"], 
-                    ConfigurationManager.AppSettings["BatchKey"]));
+            Client = GetClient();
 
             if (args.Length != 2)
             {
@@ -51,9 +48,38 @@ namespace VRayPoolManager
             }
         }
 
+        public static BatchClient GetClient()
+        {
+            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BatchAccount"]))
+            {
+                // AAD
+                Func<Task<string>> tokenProvider = () => GetAuthenticationTokenAsync();
+                return BatchClient.Open(new BatchTokenCredentials(ConfigurationManager.AppSettings["BatchUrl"], tokenProvider));
+            }
+
+            // Shared Key
+            return BatchClient.Open(
+                new BatchSharedKeyCredentials(
+                    ConfigurationManager.AppSettings["BatchUrl"],
+                    ConfigurationManager.AppSettings["BatchAccount"],
+                    ConfigurationManager.AppSettings["BatchKey"]));
+        }
+
+        public static async Task<string> GetAuthenticationTokenAsync()
+        {
+            var authContext = new AuthenticationContext(ConfigurationManager.AppSettings["AuthorityUri"]);
+
+            // Acquire the authentication token from Azure AD.
+            var authResult = await authContext.AcquireTokenAsync(ConfigurationManager.AppSettings["BatchResourceUri"],
+                ConfigurationManager.AppSettings["ApplicationId"],
+                new Uri(ConfigurationManager.AppSettings["RedirectUri"]),
+                new PlatformParameters(PromptBehavior.Auto));
+
+            return authResult.AccessToken;
+        }
+
         private static void CreatePool(string poolName)
         {
-            var restrictToPublicIp = Boolean.Parse(ConfigurationManager.AppSettings["RestrictToPublicIp"]);
             var vmSize = ConfigurationManager.AppSettings["VirtualMachineSize"];
 
             var dedicatedVmCount = Int32.Parse(ConfigurationManager.AppSettings["VirtualMachineCount"]);
@@ -79,28 +105,8 @@ namespace VRayPoolManager
                 dedicatedVmCount, 
                 lowPriorityVmCount);
 
+            SetupPoolNetworking(pool);
 
-            NetworkSecurityGroupRule[] nsgRules = null;
-
-            if (restrictToPublicIp)
-            {
-                var publicIp = GetPublicIp();
-                nsgRules = new[]
-                {
-                    new NetworkSecurityGroupRule(200, NetworkSecurityGroupRuleAccess.Allow, publicIp),
-                    new NetworkSecurityGroupRule(201, NetworkSecurityGroupRuleAccess.Deny, "*"),
-                };
-            }
-
-            var portTuple = GetPublicPortRange();
-            var inboundNatPools = new List<InboundNatPool>
-            {
-                new InboundNatPool("VRay", InboundEndpointProtocol.Tcp, 20207, portTuple.Item1, portTuple.Item2, nsgRules)
-            };
-
-            pool.NetworkConfiguration = new NetworkConfiguration();
-            pool.NetworkConfiguration.EndpointConfiguration = new PoolEndpointConfiguration(inboundNatPools.AsReadOnly());
-            pool.InterComputeNodeCommunicationEnabled = true;
             pool.ApplicationLicenses = new List<string> { "3dsmax", "vray" };
             pool.Commit();
 
@@ -113,7 +119,10 @@ namespace VRayPoolManager
             var vmCount = Math.Max(lowPriorityVmCount, dedicatedVmCount);
 
             var task = new CloudTask("setup-vray-dr", "dir");
-            task.MultiInstanceSettings = new MultiInstanceSettings(ConfigurationManager.AppSettings["VRaySetupCommand"], vmCount);
+
+            task.MultiInstanceSettings = new MultiInstanceSettings(
+                string.Format(ConfigurationManager.AppSettings["VRaySetupCommand"], ConfigurationManager.AppSettings["VRaySererPort"]), 
+                vmCount);
             task.Constraints = new TaskConstraints(maxTaskRetryCount: 3);
             job.AddTask(task);
 
@@ -149,6 +158,42 @@ namespace VRayPoolManager
 
             Console.WriteLine("Done, press any key to exit...");
             Console.ReadLine();
+        }
+
+        private static void SetupPoolNetworking(CloudPool pool)
+        {
+            pool.NetworkConfiguration = new NetworkConfiguration();
+            pool.InterComputeNodeCommunicationEnabled = true;
+
+            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["SubnetResourceId"]))
+            {
+                // If no VNet, setup inbound endpoints
+                var restrictToPublicIp = Boolean.Parse(ConfigurationManager.AppSettings["RestrictToPublicIp"]);
+
+                NetworkSecurityGroupRule[] nsgRules = null;
+
+                if (restrictToPublicIp)
+                {
+                    var publicIp = GetPublicIp();
+                    nsgRules = new[]
+                    {
+                        new NetworkSecurityGroupRule(200, NetworkSecurityGroupRuleAccess.Allow, publicIp),
+                        new NetworkSecurityGroupRule(201, NetworkSecurityGroupRuleAccess.Deny, "*"),
+                    };
+                }
+
+                var portTuple = GetPublicPortRange();
+                var inboundNatPools = new List<InboundNatPool>
+                {
+                    new InboundNatPool("VRay", InboundEndpointProtocol.Tcp, 20207, portTuple.Item1, portTuple.Item2, nsgRules)
+                };
+
+                pool.NetworkConfiguration.EndpointConfiguration = new PoolEndpointConfiguration(inboundNatPools.AsReadOnly());
+            }
+            else
+            {
+                pool.NetworkConfiguration.SubnetId = ConfigurationManager.AppSettings["SubnetResourceId"];
+            }
         }
 
         private static void WriteVRayConfig(CloudPool pool)
@@ -189,34 +234,26 @@ namespace VRayPoolManager
             File.WriteAllText(vrayRtConfig, "");
             foreach (var computeNode in pool.ListComputeNodes())
             {
-                if (computeNode.EndpointConfiguration != null && computeNode.EndpointConfiguration.InboundEndpoints != null)
+                var computeNodeEntry = GetComputeNodeEntry(computeNode);
+
+                Console.WriteLine("    {0} {1}", computeNode.Id, computeNodeEntry);
+
+                if (vrayConfigContent.Contains(computeNodeEntry))
                 {
-                    foreach (var endpoint in computeNode.EndpointConfiguration.InboundEndpoints)
-                    {
-                        if (endpoint.Name.StartsWith("VRay"))
-                        {
-                            Console.WriteLine("    {0} {1}:{2}", computeNode.Id, endpoint.PublicIPAddress, endpoint.FrontendPort);
-
-                            var computeNodeEntry = string.Format("{0} 1 {1}\n", endpoint.PublicIPAddress, endpoint.FrontendPort);
-                            if (vrayConfigContent.Contains(computeNodeEntry))
-                            {
-                                Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayConfig);
-                            }
-                            else
-                            {
-                                File.AppendAllText(vrayConfig, computeNodeEntry);
-                            }
-
-                            if (vrayRtConfigContent.Contains(computeNodeEntry))
-                            {
-                                Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayRtConfigContent);
-                            }
-                            else
-                            {
-                                File.AppendAllText(vrayRtConfig, computeNodeEntry);
-                            }
-                        }
-                    }
+                    Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayConfig);
+                }
+                else
+                {
+                    File.AppendAllText(vrayConfig, computeNodeEntry);
+                }
+                
+                if (vrayRtConfigContent.Contains(computeNodeEntry))
+                {
+                    Console.WriteLine("Compute node {0} already exists in config file {1}", computeNodeEntry, vrayRtConfigContent);
+                }
+                else
+                {
+                    File.AppendAllText(vrayRtConfig, computeNodeEntry);
                 }
             }
 
@@ -225,6 +262,29 @@ namespace VRayPoolManager
 
             Console.WriteLine("Updated VRay DR config file: " + vrayConfig);
             Console.WriteLine("Updated VRayRT DR config file: " + vrayConfig);
+        }
+
+        private static string GetComputeNodeEntry(ComputeNode computeNode)
+        {
+            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["SubnetResourceId"]))
+            {
+                // Get public endpoint
+                if (computeNode.EndpointConfiguration != null &&
+                    computeNode.EndpointConfiguration.InboundEndpoints != null)
+                {
+                    foreach (var endpoint in computeNode.EndpointConfiguration.InboundEndpoints)
+                    {
+                        if (endpoint.Name.StartsWith("VRay"))
+                        {
+                            Console.WriteLine("    {0} {1}:{2}", computeNode.Id, endpoint.PublicIPAddress,
+                                endpoint.FrontendPort);
+                            return string.Format("{0} 1 {1}\n", endpoint.PublicIPAddress, endpoint.FrontendPort);
+                        }
+                    }
+                }
+            }
+
+            return string.Format("{0} 1 {1}\n", computeNode.IPAddress, ConfigurationManager.AppSettings["VRaySererPort"]);
         }
 
         private static Tuple<int, int> GetPublicPortRange()
@@ -241,7 +301,7 @@ namespace VRayPoolManager
                 var tokens = portRangeSetting.Split(':');
                 return Tuple.Create<int, int>(int.Parse(tokens[0]), int.Parse(tokens[1]));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new Exception("Invalid port range specified: " + portRangeSetting + ", please specify a port range in the format 20000:20099");
             }
