@@ -34,18 +34,38 @@ namespace VRayPoolManager
                 Usage();
             }
 
-            if (action == "create")
+            try
             {
-                CreatePool(poolName);
+                if (action == "create")
+                {
+                    CreatePool(poolName);
+                }
+                else if (action == "delete")
+                {
+                    DeletePool(poolName);
+                }
+                else
+                {
+                    Usage();
+                }
             }
-            else if (action == "delete")
+            catch (BatchException be)
             {
-                DeletePool(poolName);
+                if (be.RequestInformation != null && be.RequestInformation.BatchError != null)
+                {
+                    Console.WriteLine("Code={0}, Message={1}, Values=", 
+                    be.RequestInformation.BatchError.Code, 
+                    be.RequestInformation.BatchError.Message.Value);
+                    foreach (var batchErrorDetail in be.RequestInformation.BatchError.Values)
+                    {
+                        Console.WriteLine("{0} - {1}", batchErrorDetail.Key, batchErrorDetail.Value);
+                    }
+                }
+                Console.WriteLine(be);
             }
-            else
-            {
-                Usage();
-            }
+
+            Console.WriteLine("Done, press any key to exit...");
+            Console.ReadLine();
         }
 
         public static BatchClient GetClient()
@@ -154,9 +174,6 @@ namespace VRayPoolManager
                 Thread.Sleep(15000);
                 task = Client.JobOperations.GetTask(job.Id, task.Id);
             }
-
-            Console.WriteLine("Done, press any key to exit...");
-            Console.ReadLine();
         }
 
         private static void SetupPoolNetworking(CloudPool pool)
@@ -282,16 +299,7 @@ namespace VRayPoolManager
                     }
                 }
             }
-
-<<<<<<< Updated upstream
             return string.Format("{0} 1 {1}\n", computeNode.IPAddress, ConfigurationManager.AppSettings["VRaySererPort"]);
-=======
-            File.AppendAllText(vrayConfig, vrayConfigContent);
-            File.AppendAllText(vrayRtConfig, vrayRtConfigContent);
-
-            Console.WriteLine("Updated VRay DR config file: " + vrayConfig);
-            Console.WriteLine("Updated VRayRT DR config file: " + vrayRtConfig);
->>>>>>> Stashed changes
         }
 
         private static Tuple<int, int> GetPublicPortRange()
