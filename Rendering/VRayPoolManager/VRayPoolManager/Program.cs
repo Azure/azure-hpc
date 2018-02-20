@@ -118,10 +118,9 @@ namespace VRayPoolManager
 
             var vmCount = Math.Max(lowPriorityVmCount, dedicatedVmCount);
 
-            var task = new CloudTask("setup-vray-dr", "dir");
-
+            var task = new CloudTask("setup-vray-dr", "set");
             task.MultiInstanceSettings = new MultiInstanceSettings(
-                string.Format(ConfigurationManager.AppSettings["VRaySetupCommand"], ConfigurationManager.AppSettings["VRaySererPort"]), 
+                string.Format(ConfigurationManager.AppSettings["VRaySetupCommand"], ConfigurationManager.AppSettings["VRayServerPort"]), 
                 vmCount);
             task.Constraints = new TaskConstraints(maxTaskRetryCount: 3);
             job.AddTask(task);
@@ -284,7 +283,15 @@ namespace VRayPoolManager
                 }
             }
 
+<<<<<<< Updated upstream
             return string.Format("{0} 1 {1}\n", computeNode.IPAddress, ConfigurationManager.AppSettings["VRaySererPort"]);
+=======
+            File.AppendAllText(vrayConfig, vrayConfigContent);
+            File.AppendAllText(vrayRtConfig, vrayRtConfigContent);
+
+            Console.WriteLine("Updated VRay DR config file: " + vrayConfig);
+            Console.WriteLine("Updated VRayRT DR config file: " + vrayRtConfig);
+>>>>>>> Stashed changes
         }
 
         private static Tuple<int, int> GetPublicPortRange()
