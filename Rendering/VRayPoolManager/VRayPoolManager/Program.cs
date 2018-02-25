@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Batch;
@@ -53,12 +51,21 @@ namespace VRayPoolManager
             {
                 if (be.RequestInformation != null && be.RequestInformation.BatchError != null)
                 {
-                    Console.WriteLine("Code={0}, Message={1}, Values=", 
-                    be.RequestInformation.BatchError.Code, 
-                    be.RequestInformation.BatchError.Message.Value);
-                    foreach (var batchErrorDetail in be.RequestInformation.BatchError.Values)
+                    var msg = "";
+                    if (be.RequestInformation.BatchError.Message != null)
                     {
-                        Console.WriteLine("{0} - {1}", batchErrorDetail.Key, batchErrorDetail.Value);
+                        msg = be.RequestInformation.BatchError.Message.Value;
+                    }
+
+                    Console.WriteLine("Code={0}, Message={1}, Values=",
+                        be.RequestInformation.BatchError.Code, msg);
+
+                    if (be.RequestInformation.BatchError.Values != null)
+                    {
+                        foreach (var batchErrorDetail in be.RequestInformation.BatchError.Values)
+                        {
+                            Console.WriteLine("{0} - {1}", batchErrorDetail.Key, batchErrorDetail.Value);
+                        }
                     }
                 }
                 Console.WriteLine(be);
@@ -138,14 +145,22 @@ namespace VRayPoolManager
 
             var vmCount = Math.Max(lowPriorityVmCount, dedicatedVmCount);
 
+            var cmd = string.Format("cd .. & vray-adv-dr.cmd {0}",
+                ConfigurationManager.AppSettings["VRayServerPort"]);
+
             var task = new CloudTask("setup-vray-dr", "set");
-            task.MultiInstanceSettings = new MultiInstanceSettings(
-                string.Format(ConfigurationManager.AppSettings["VRaySetupCommand"], ConfigurationManager.AppSettings["VRayServerPort"]), 
-                vmCount);
-            task.Constraints = new TaskConstraints(maxTaskRetryCount: 3);
+            task.MultiInstanceSettings = new MultiInstanceSettings(cmd, vmCount);
+            task.MultiInstanceSettings.CommonResourceFiles = new List<ResourceFile>
+            {
+                new ResourceFile("https://raw.githubusercontent.com/smith1511/tools/master/Rendering/vray-adv-dr.cmd", "vray-adv-dr.cmd"),
+                new ResourceFile(ConfigurationManager.AppSettings["BackburnerCabUrl"], "Backburner.cab"),
+                new ResourceFile(ConfigurationManager.AppSettings["BackburnerMsiUrl"], "Backburner.msi"),
+            };
+            task.Constraints = new TaskConstraints(maxTaskRetryCount: -1);
+            task.UserIdentity = new UserIdentity(new AutoUserSpecification(AutoUserScope.Pool, elevationLevel: ElevationLevel.Admin));
             job.AddTask(task);
 
-            Console.WriteLine("Waiting for pool nodes to allocate...");
+            Console.WriteLine("Waiting for pool nodes to start...");
             pool.Refresh();
             while (pool.AllocationState.Value != AllocationState.Steady)
             {
@@ -167,13 +182,15 @@ namespace VRayPoolManager
 
             WriteVRayConfig(pool);
 
-            Console.WriteLine("Waiting for configuration task to complete...");
+            Console.WriteLine("Waiting for VRay spawner to start...");
             task = Client.JobOperations.GetTask(job.Id, task.Id);
             while (task.State.Value == TaskState.Active)
             {
                 Thread.Sleep(15000);
                 task = Client.JobOperations.GetTask(job.Id, task.Id);
             }
+
+            Thread.Sleep(15000);
         }
 
         private static void SetupPoolNetworking(CloudPool pool)
