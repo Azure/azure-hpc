@@ -152,9 +152,7 @@ namespace VRayPoolManager
             task.MultiInstanceSettings = new MultiInstanceSettings(cmd, vmCount);
             task.MultiInstanceSettings.CommonResourceFiles = new List<ResourceFile>
             {
-                new ResourceFile("https://raw.githubusercontent.com/smith1511/tools/master/Rendering/vray-adv-dr.cmd", "vray-adv-dr.cmd"),
-                new ResourceFile(ConfigurationManager.AppSettings["BackburnerCabUrl"], "Backburner.cab"),
-                new ResourceFile(ConfigurationManager.AppSettings["BackburnerMsiUrl"], "Backburner.msi"),
+                new ResourceFile("https://raw.githubusercontent.com/Azure/azure-hpc/master/Rendering/VRayPoolManager/Scripts/vray-adv-dr.cmd", "vray-adv-dr.cmd")
             };
             task.Constraints = new TaskConstraints(maxTaskRetryCount: -1);
             task.UserIdentity = new UserIdentity(new AutoUserSpecification(AutoUserScope.Pool, elevationLevel: ElevationLevel.Admin));
