@@ -32,32 +32,32 @@ namespace Microsoft.Azure.Blast.Web.Controllers.Api
         [Route("{repositoryId}/databases"), HttpGet]
         public IEnumerable<ExternalDatabase> Get(string repositoryId)
         {
-            var databaseRespository = _externalRepositoryManager.GetRepository(repositoryId);
+            var databaseRepository = _externalRepositoryManager.GetRepository(repositoryId);
 
-            if (databaseRespository == null)
+            if (databaseRepository == null)
             {
                 return Enumerable.Empty<ExternalDatabase>();
             }
 
-            return databaseRespository.DatabaseSource.ListDatabases().ToList();
+            return databaseRepository.DatabaseSource.ListDatabases().ToList();
         }
 
         [Route("{repositoryId}/databases/{databaseId}/import"), HttpPost]
         public void Post(string repositoryId, string databaseId)
         {
-            var databaseRespository = _externalRepositoryManager.GetRepository(repositoryId);
-            if (databaseRespository == null)
+            var databaseRepository = _externalRepositoryManager.GetRepository(repositoryId);
+            if (databaseRepository == null)
             {
                 throw new Exception("No such repository");
             }
 
-            var database = databaseRespository.DatabaseSource.GetDatabase(databaseId);
+            var database = databaseRepository.DatabaseSource.GetDatabase(databaseId);
             if (database == null)
             {
                 throw new Exception("No such database");
             }
 
-            _databaseImportManager.SubmitImport(databaseRespository, database);
+            _databaseImportManager.SubmitImport(databaseRepository, database);
         }
     }
 }

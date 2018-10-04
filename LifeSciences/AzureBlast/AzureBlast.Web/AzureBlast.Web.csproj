@@ -310,7 +310,7 @@
     <Compile Include="Models\NewSearchModel.cs" />
     <Compile Include="Models\PoolDetailsModel.cs" />
     <Compile Include="Models\PoolSpec.cs" />
-    <Compile Include="Models\RespositoryViewModel.cs" />
+    <Compile Include="Models\RepositoryViewModel.cs" />
     <Compile Include="Models\VisualizeResultsModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />

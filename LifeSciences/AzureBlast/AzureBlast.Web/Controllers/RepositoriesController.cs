@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Blast.Web.Controllers
         public ActionResult Index(string id)
         {
             var repos = _externalRepositoryManager.ListRepositories().ToList();
-            var repoModel = new RespositoryViewModel
+            var repoModel = new RepositoryViewModel
             {
                 SelectedRepoId = string.IsNullOrEmpty(id) ? "ncbi" : id,
                 Repositories = repos,
