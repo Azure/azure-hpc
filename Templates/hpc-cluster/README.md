@@ -79,6 +79,6 @@ The master/head node and worker nodes require VM sizes that support at least 4 d
 
 ### MPI
 
-To run MPI applications you'll need to use the A8/A9 ir H-series 'r' instances which include InfiniBand and RDMA support.
+To run MPI applications you'll need to use the A8/A9 or H-series 'r' instances which include InfiniBand and RDMA support.
 
 Currently RDMA only supports Intel MPI.  You can download the Intel pieces and get an evaluation license from https://software.intel.com/en-us/intel-mpi-library.
